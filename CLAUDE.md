@@ -1,0 +1,35 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Repo structure
+
+This is a multi-project repo, not a single app:
+
+- **`Directus/`** — Directus 10.13.1 headless CMS, run via Docker Compose, SQLite backend. Manages "What We Do" and "Our Products" content so the website can be updated without redeploys.
+- **`Website/`** — Angular 20 (standalone components, signals) frontend, project name `gencolink`.
+- **`functions/`** — Azure Functions (JS, Node ≥18). Single HTTP function `send-contact-email` using `@azure/communication-email`. It's triggered by a **Directus Flow** (webhook on the `contact_submissions` collection) — this wiring lives in Directus config, not in code, so grepping `functions/` alone won't reveal the trigger.
+
+Integration flow: Directus `GET /items/site_content` → `Website/public/runtime-config.js` (sets `window.__DIRECTUS_URL__`) → Angular `SiteContentService` (falls back to defaults if the fetch fails). **`runtime-config.js` is the only place to change the CMS URL for prod** — no rebuild needed, easy to miss.
+
+## Setup / running each project
+
+- **Directus**: `docker compose up -d` from `Directus/`, then run `node setup.js` once to bootstrap collections/seed data — this is a manual, one-time step, not automatic.
+- **Website**: standard Angular CLI — `npm start` (`ng serve`), `npm run build`, `npm test` (Karma/Jasmine via Puppeteer). No lint script configured.
+- **functions**: `npm start` runs `func start` (requires Azure Functions Core Tools). `npm run build` is a no-op (`echo`) — plain JS, no build step.
+
+No CI is configured for this repo yet.
+
+## Code style (Website/)
+
+- Prettier config is inline in `Website/package.json`: `printWidth: 100`, `singleQuote: true`; HTML files use `parser: angular`.
+- `tsconfig.json` is strict: `strict`, `noImplicitOverride`, `noPropertyAccessFromIndexSignature`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, plus Angular `strictTemplates`, `strictInjectionParameters`, `strictInputAccessModifiers`. Don't loosen these.
+
+## Secrets — do not expose
+
+- `Directus/.env` contains real dev secrets and is **not** covered by any `.gitignore` in this repo. Never commit it, and flag to the user if you're asked to touch `.gitignore` near it.
+- `Directus/README.md` contains plaintext admin credentials (`admin@gencolink.com` / a real password). Don't copy these into other files, logs, or commit messages.
+
+## Ignore these when exploring/committing
+
+`Website/` root has stray QA screenshots, a `qa-screenshot.mjs` script, and `.playwright-mcp/` session dumps. These are disposable manual-QA artifacts, not part of the app — don't treat them as reference material and don't commit new ones.

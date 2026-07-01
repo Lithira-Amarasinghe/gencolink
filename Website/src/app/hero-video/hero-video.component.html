@@ -1,0 +1,38 @@
+<section class="hero-video-wrapper" #wrapper aria-labelledby="hero-video-title">
+  <div class="hero-video-sticky" #sticky>
+    <canvas class="hero-frame-canvas" #frameCanvas aria-hidden="true"></canvas>
+
+    <div class="hero-video-copy" #heroCopy>
+      <div class="hero-copy-panel hero-copy-intro" data-intro-panel>
+        <h1 id="hero-video-title" data-intro-item>
+          {{ contentStore.hero().title }} <span>{{ contentStore.hero().titleHighlight }}</span>
+        </h1>
+        <p data-intro-item>
+          {{ contentStore.hero().description }}
+        </p>
+        <div class="hero-video-actions" data-intro-item>
+          <a class="primary-button" href="#services">{{ contentStore.hero().primaryCta }}</a>
+          <a class="secondary-button" href="#services">{{ contentStore.hero().secondaryCta }}</a>
+        </div>
+        <div class="hero-proof" data-intro-item>
+          @for (item of contentStore.hero().proofPoints; track item) {
+            <span>{{ item }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="hero-copy-panel hero-copy-solutions" data-solutions-panel>
+        <h2 data-solutions-item>
+          Solutions built around the way your <span>business moves.</span>
+        </h2>
+        <p data-solutions-item>
+          We bring product strategy, software engineering, cloud delivery, and automation together
+          so your platform can grow without adding unnecessary complexity.
+        </p>
+        <div class="hero-video-actions hero-solutions-actions" data-solutions-item>
+          <a class="primary-button" href="#services">See What We Do</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

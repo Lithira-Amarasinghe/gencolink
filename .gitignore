@@ -1,0 +1,3 @@
+# Azure Functions — never commit real secrets
+functions/local.settings.json
+functions/node_modules/

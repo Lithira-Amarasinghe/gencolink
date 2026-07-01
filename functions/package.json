@@ -1,0 +1,16 @@
+{
+  "name": "gencolink-functions",
+  "version": "1.0.0",
+  "description": "Azure Functions for Gencolink — handles transactional email via ACS.",
+  "main": "send-contact-email/index.js",
+  "scripts": {
+    "start": "func start",
+    "build": "echo 'No build step required for JS functions'"
+  },
+  "dependencies": {
+    "@azure/communication-email": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,6 @@
+# Real secrets — never commit
+.env
+
+# Runtime data
+database/
+uploads/

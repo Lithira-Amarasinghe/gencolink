@@ -1,0 +1,10 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "ACS_CONNECTION_STRING": "endpoint=https://REPLACE.communication.azure.com/;accesskey=REPLACE",
+    "ACS_SENDER_ADDRESS": "noreply@mail.REPLACE_YOUR_DOMAIN",
+    "CONTACT_RECIPIENT_EMAIL": "REPLACE_YOUR_INBOX@example.com"
+  }
+}

@@ -1,0 +1,225 @@
+:host {
+  display: block;
+  color: #162162;
+}
+
+.hero-video-wrapper {
+  position: relative;
+  height: 300vh;
+  background: #ffffff;
+}
+
+.hero-video-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #FAFAFA;
+  isolation: isolate;
+}
+
+.hero-frame-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  will-change: opacity;
+}
+
+.hero-video-copy {
+  position: absolute;
+  top: 50%;
+  left: clamp(24px, 6.2vw, 104px);
+  z-index: 2;
+  width: min(640px, 44vw);
+  transform: translateY(-50%);
+  font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
+  will-change: opacity, transform, filter;
+}
+
+.hero-copy-panel {
+  width: 100%;
+  will-change: opacity, transform, filter;
+}
+
+.hero-copy-solutions {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(22px);
+}
+
+.hero-video-copy h1,
+.hero-copy-solutions h2 {
+  margin: 0 0 22px;
+  color: #162162;
+  font-size: clamp(48px, 5.15vw, 82px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: 0;
+  text-shadow: 0 2px 18px rgba(255, 255, 255, 0.72);
+}
+
+.hero-video-copy h1 span,
+.hero-copy-solutions h2 span {
+  color: #0F80CB;
+}
+
+.hero-copy-solutions h2 {
+  max-width: 620px;
+  margin-bottom: 20px;
+  font-size: clamp(42px, 4.35vw, 68px);
+}
+
+.hero-video-copy p,
+.hero-copy-solutions > p {
+  max-width: 540px;
+  margin: 0 0 30px;
+  color: #53657f;
+  font-size: clamp(17px, 1.35vw, 20px);
+  font-weight: 600;
+  line-height: 1.65;
+  text-shadow: 0 2px 14px rgba(255, 255, 255, 0.7);
+}
+
+.hero-copy-solutions > p {
+  max-width: 590px;
+  margin-bottom: 28px;
+  font-size: clamp(17px, 1.3vw, 20px);
+  line-height: 1.62;
+}
+
+.hero-video-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.hero-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 18px;
+  color: #24415f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hero-proof span {
+  padding: 8px 12px;
+  border: 1px solid rgba(22, 33, 98, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 25px;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.primary-button {
+  border: 1px solid #19428B;
+  background: #19428B;
+  color: #ffffff;
+  box-shadow: 0 18px 38px rgba(25, 66, 139, 0.24);
+}
+
+.secondary-button {
+  border: 1px solid rgba(22, 33, 98, 0.18);
+  background: rgba(255, 255, 255, 0.78);
+  color: #162162;
+  backdrop-filter: blur(10px);
+}
+
+[data-hero-copy-item] {
+  will-change: opacity, transform, filter;
+}
+
+.hero-solutions-actions {
+  margin-top: 4px;
+}
+
+[data-intro-item],
+[data-solutions-item] {
+  will-change: opacity, transform, filter;
+}
+
+@media (max-width: 980px) {
+  .hero-video-wrapper {
+    height: 260vh;
+  }
+
+  .hero-video-copy {
+    top: 118px;
+    left: 28px;
+    width: min(620px, calc(100% - 56px));
+    transform: none;
+  }
+
+  .hero-video-copy h1,
+  .hero-copy-solutions h2 {
+    font-size: clamp(40px, 7vw, 62px);
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-video-wrapper {
+    height: 230vh;
+  }
+
+  .hero-video-copy {
+    top: 96px;
+    left: 20px;
+    width: calc(100% - 40px);
+  }
+
+  .hero-video-copy h1 {
+    margin-bottom: 16px;
+    font-size: clamp(34px, 10vw, 48px);
+    line-height: 1.05;
+  }
+
+  .hero-copy-solutions h2 {
+    margin-bottom: 14px;
+    font-size: clamp(34px, 10vw, 48px);
+    line-height: 1.06;
+  }
+
+  .hero-video-copy p,
+  .hero-copy-solutions > p {
+    margin-bottom: 20px;
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+
+  .hero-video-actions {
+    gap: 10px;
+  }
+
+  .primary-button,
+  .secondary-button {
+    flex: 1 1 180px;
+    min-height: 46px;
+    padding: 0 16px;
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-video-wrapper {
+    height: 140vh;
+  }
+}
