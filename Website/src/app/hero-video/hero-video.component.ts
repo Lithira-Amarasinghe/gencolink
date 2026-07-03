@@ -27,6 +27,16 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
   private static readonly frameExtension = 'png';
   private static readonly preloadConcurrency = 6;
 
+  /**
+   * Scroll distance the pinned hero occupies, in viewport heights. Sets the frame pace.
+   * Set to 4vh to make frame changes gradual over a moderate scroll.
+   * The next section is revealed early (at 75% of this) via a negative margin expressed
+   * in vh — see `.services-section` in app.css. If this value changes, update that margin:
+   * -(1 - 0.75) * scrollLengthVh * 100vh.
+   * For 4vh: -(0.25 * 4 * 100vh) = -100vh
+   */
+  private static readonly scrollLengthVh = 4;
+
   @ViewChild('wrapper') private wrapperRef?: ElementRef<HTMLElement>;
   @ViewChild('sticky') private stickyRef?: ElementRef<HTMLElement>;
   @ViewChild('frameCanvas') private frameCanvasRef?: ElementRef<HTMLCanvasElement>;
@@ -41,6 +51,9 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
   private pendingDrawScheduled = false;
   private destroyed = false;
   private framesReady = false;
+  private lastStickyWidth = -1;
+  private lastStickyHeight = -1;
+  private refreshTimer?: ReturnType<typeof setTimeout>;
 
   constructor(
     @Inject(PLATFORM_ID) private readonly platformId: object,
@@ -76,6 +89,10 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
 
     if (this.animationFrameId !== undefined) {
       cancelAnimationFrame(this.animationFrameId);
+    }
+
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
     }
 
     this.frames.forEach((frame) => {
@@ -134,9 +151,23 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
           defaults: { ease: 'none' },
           scrollTrigger: {
             trigger: wrapper,
-            start: 'top top',
-            end: 'bottom top',
-            scrub: 0.25,
+            // wrapper sits below the sticky header in normal flow, so its own top never
+            // reaches viewport-top(0) until you've scrolled past the header's height —
+            // that dead scroll (page moves, frames don't) is exactly the header's height.
+            // Offsetting the trigger point by that height makes the pin (and frame
+            // animation) engage on the very first scroll pixel instead.
+            start: () => 'top top+=' + (document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0),
+            // Full original scroll distance so the frames keep their comfortable pace.
+            // Services is revealed EARLY (at 75%) not by shortening this, but by pulling
+            // that section up with a negative margin (--hero-reveal-overlap, set in
+            // onRefresh below and consumed in app.css). This keeps frame speed and the
+            // reveal timing independent.
+            end: () => '+=' + window.innerHeight * HeroVideoComponent.scrollLengthVh,
+            // Lenis (see lenis-scroll.service.ts, lerp: 0.12) already smooths raw scroll
+            // input. Stacking GSAP's own scrub lag on top of an already-smoothed value
+            // compounds into a sluggish "catching up" feel right where the hand-off to
+            // the next section should be crisp — so track scroll immediately here.
+            scrub: true,
             pin: sticky,
             pinSpacing: true,
             anticipatePin: 1,
@@ -144,28 +175,35 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
             onUpdate: () => this.drawFrame(Math.round(playhead.frame)),
           },
         })
+        // Frames reach the last one by 90% of scroll — the canvas stays fully opaque and
+        // un-faded for the entire sequence, frame 0 through the last frame. Only once the
+        // last frame is showing does the fade (below, at 0.75) begin, so the fade never
+        // overlaps a still-changing frame.
         .to(
           playhead,
           {
             frame: HeroVideoComponent.frameCount - 1,
-            duration: 1,
+            duration: 0.9,
           },
           0,
         )
+        // Intro panel visible from 0% to 37.5% (37.5% window = 1.875vh scroll)
         .to(
           introItems,
           {
             autoAlpha: 0,
             x: -38,
             y: -20,
-            filter: 'blur(7px)',
+            filter: 'blur(5px)',
             duration: 0.22,
             ease: 'power2.inOut',
             stagger: 0.075,
           },
-          0.3,
+          0.375,
         )
-        .to(introPanel, { autoAlpha: 0, duration: 0.01 }, 0.45)
+        .to(introPanel, { autoAlpha: 0, duration: 0.01 }, 0.375)
+        // Solutions panel visible from 37.5% to 75% (37.5% window = 1.875vh scroll)
+        // This balances screen time with intro panel
         .to(
           solutionsPanel,
           {
@@ -176,7 +214,7 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
             duration: 0.15,
             ease: 'power2.out',
           },
-          0.45,
+          0.375,
         )
         .to(
           solutionsItems,
@@ -189,21 +227,26 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
             ease: 'power2.out',
             stagger: 0.045,
           },
-          0.48,
+          0.375,
         )
+        // Services starts rising at 70% (revealFraction, see app.css) and paints over the hero (z-index).
+        // Solutions panel fades out quickly (70% → 80%, duration 0.10) to exit first.
+        // Background remains visible while Solutions exits, then fades gradually (80% → 100%, duration 0.20).
+        // This staggered timing creates a premium handoff: Solutions exits → Background lingers while Services
+        // rises → Background fades as Services takes full control. Fades are sequenced, not simultaneous.
         .to(
           solutionsPanel,
           {
             autoAlpha: 0,
             x: -24,
             y: -14,
-            filter: 'blur(7px)',
-            duration: 0.1,
-            ease: 'power2.inOut',
+            filter: 'blur(5px)',
+            duration: 0.10,
+            ease: 'power2.out',
           },
-          0.82,
+          0.70,
         )
-        .to(canvas, { autoAlpha: 0, duration: 0.06, ease: 'none' }, 0.94);
+        .to(canvas, { autoAlpha: 0, duration: 0.20, ease: 'power2.out' }, 0.80);
     }, wrapper);
 
     ScrollTrigger.refresh();
@@ -218,6 +261,14 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
     }
 
     const { width, height } = sticky.getBoundingClientRect();
+
+    if (Math.abs(width - this.lastStickyWidth) < 1 && Math.abs(height - this.lastStickyHeight) < 1) {
+      return;
+    }
+
+    this.lastStickyWidth = width;
+    this.lastStickyHeight = height;
+
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
     canvas.width = Math.max(Math.round(width * pixelRatio), 1);
     canvas.height = Math.max(Math.round(height * pixelRatio), 1);
@@ -226,7 +277,15 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
     const frameToRedraw = Math.max(this.currentFrameIndex, 0);
     this.currentFrameIndex = -1;
     this.drawFrame(frameToRedraw, true);
-    ScrollTrigger.refresh();
+
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
+    this.refreshTimer = setTimeout(() => {
+      if (!this.destroyed) {
+        ScrollTrigger.refresh();
+      }
+    }, 120);
   }
 
   private async prepareFrames(): Promise<void> {
