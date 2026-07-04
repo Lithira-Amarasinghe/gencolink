@@ -1125,6 +1125,62 @@ textarea {
   .section-shell {
     width: min(100% - 32px, 1320px);
   }
+}
+
+@media (max-width: 335px) {
+  .site-header {
+    grid-template-columns: auto 1fr auto auto;
+    min-height: 56px;
+    padding: 0 4px;
+    gap: 4px;
+  }
+
+  .brand {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .brand-mark {
+    width: 9px;
+    height: 9px;
+    border: 1.5px solid var(--signal);
+  }
+
+  .nav-cta {
+    grid-column: 3;
+    padding: 0 8px;
+    font-size: 9px;
+    min-height: 32px;
+    white-space: nowrap;
+  }
+
+  .nav-cta svg {
+    width: 10px;
+    height: 10px;
+    display: none;
+  }
+
+  .menu-button {
+    grid-column: 4;
+    width: 36px;
+    height: 36px;
+    border-width: 0.5px;
+  }
+
+  svg[lucideMenu],
+  svg[lucideX] {
+    width: 14px;
+    height: 14px;
+  }
+
+  .mobile-nav {
+    top: 56px;
+    padding: 8px 4px 12px;
+  }
+
+  .section-shell {
+    width: min(100% - 16px, 1320px);
+  }
 
   .section-heading.split,
   .section-heading.inline {
