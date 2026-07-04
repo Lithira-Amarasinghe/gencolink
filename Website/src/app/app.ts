@@ -1,76 +1,43 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { NgOptimizedImage } from '@angular/common';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, AfterViewInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ContactService } from './contact.service';
 import {
   LucideArrowRight,
-  LucideBriefcaseBusiness,
   LucideCheckCircle,
-  LucideCloud,
   LucideCode2,
-  LucideDatabaseZap,
-  LucideGlobe,
-  LucideHandshake,
-  LucideHeartPulse,
   LucideLink,
-  LucideLockKeyhole,
   LucideMail,
   LucideMenu,
-  LucideRocket,
-  LucideShieldCheck,
-  LucideUsers,
-  LucideWorkflow,
   LucideX,
 } from '@lucide/angular';
 import { HeroVideoComponent } from './hero-video/hero-video.component';
 import { SiteContentService } from './site-content.service';
 
-type CaseStudy = {
-  readonly industry: string;
-  readonly title: string;
-  readonly image: string;
-  readonly summary: string;
-  readonly stats: readonly { readonly value: string; readonly label: string }[];
-};
-
 @Component({
   selector: 'app-root',
   imports: [
     HeroVideoComponent,
-    NgOptimizedImage,
     ReactiveFormsModule,
     LucideArrowRight,
-    LucideBriefcaseBusiness,
     LucideCheckCircle,
-    LucideCloud,
     LucideCode2,
-    LucideDatabaseZap,
-    LucideGlobe,
-    LucideHandshake,
-    LucideHeartPulse,
     LucideLink,
-    LucideLockKeyhole,
     LucideMail,
     LucideMenu,
-    LucideRocket,
-    LucideShieldCheck,
-    LucideUsers,
-    LucideWorkflow,
     LucideX,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(window:load)': 'setupScrollAnimation()' },
 })
-export class App {
+export class App implements AfterViewInit {
   private readonly formBuilder = new FormBuilder();
   readonly contentStore = inject(SiteContentService);
 
   private readonly contactService = inject(ContactService);
 
   readonly menuOpen = signal(false);
-  readonly activeCaseStudy = signal<CaseStudy | null>(null);
-  readonly rolesOpen = signal(false);
   readonly submitted = signal(false);
   readonly submitting = signal(false);
   readonly toast = signal<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -80,29 +47,56 @@ export class App {
   readonly contactForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
-    company: ['', [Validators.required, Validators.minLength(2)]],
+    company: [''],
     message: ['', [Validators.required, Validators.minLength(12)]],
   });
 
   readonly navItems = [
     { label: 'Services', target: 'services' },
-    { label: 'Products', target: 'products' },
-    { label: 'Work', target: 'work' },
-    { label: 'Careers', target: 'careers' },
+    { label: 'Why us', target: 'why' },
+    { label: 'FAQ', target: 'faq' },
     { label: 'Contact', target: 'contact' },
   ] as const;
 
-  readonly trustLogos = ['Payrix', 'Movu', 'Lumen', 'Finova', 'Healthia', 'Skylab', 'Arcus'];
-
-  readonly openRoles = [
-    'Senior Angular Engineer',
-    'Cloud Platform Architect',
-    'Product Designer',
-    'Business Development Lead',
-  ];
-
   constructor() {
     void this.contentStore.load();
+  }
+
+  ngAfterViewInit(): void {
+    this.setupScrollAnimation();
+  }
+
+  setupScrollAnimation(): void {
+    // Observe sections for fade-in
+    const sectionObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('fade-in-visible');
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    const sectionsToObserve = document.querySelectorAll('[data-fade-in]');
+    sectionsToObserve.forEach((el) => sectionObserver.observe(el));
+
+    // Observe individual items for per-item animations
+    const itemObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-in-view');
+            itemObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    const itemsToObserve = document.querySelectorAll('.service-row, .value-item');
+    itemsToObserve.forEach((el) => itemObserver.observe(el));
   }
 
   scrollTo(target: string): void {
@@ -110,20 +104,8 @@ export class App {
     this.menuOpen.set(false);
   }
 
-  openCaseStudy(caseStudy: CaseStudy): void {
-    this.activeCaseStudy.set(caseStudy);
-  }
-
-  closeCaseStudy(): void {
-    this.activeCaseStudy.set(null);
-  }
-
   toggleMenu(): void {
     this.menuOpen.update((open) => !open);
-  }
-
-  toggleRoles(): void {
-    this.rolesOpen.update((open) => !open);
   }
 
   private showToast(type: 'success' | 'error', message: string): void {
@@ -159,5 +141,9 @@ export class App {
       .finally(() => {
         this.submitting.set(false);
       });
+  }
+
+  telHref(phone: string): string {
+    return 'tel:' + phone.replace(/[^\d+]/g, '');
   }
 }

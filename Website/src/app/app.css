@@ -345,10 +345,15 @@ p {
     background-color 280ms var(--ease-out-quart);
 }
 
-[data-fade-in].fade-in-visible .service-row {
+[data-fade-in] .service-row {
   opacity: 0;
   animation: slideInLeft 600ms var(--ease-out-quart) forwards;
   animation-delay: calc(var(--i, 0) * 80ms);
+  animation-play-state: paused;
+}
+
+[data-fade-in] .service-row.animate-in-view {
+  animation-play-state: running;
 }
 
 .service-row:first-child {
@@ -550,10 +555,15 @@ p {
     opacity 300ms var(--ease-out-quart);
 }
 
-[data-fade-in].fade-in-visible .value-item {
+[data-fade-in] .value-item {
   opacity: 0;
   animation: slideUp 700ms var(--ease-out-quart) forwards;
   animation-delay: calc(var(--i, 0) * 100ms);
+  animation-play-state: paused;
+}
+
+[data-fade-in] .value-item.animate-in-view {
+  animation-play-state: running;
 }
 
 .value-node {
