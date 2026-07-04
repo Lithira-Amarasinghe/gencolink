@@ -292,11 +292,15 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
     try {
       this.frames[0] = await this.loadFrame(0);
       this.drawFrame(0, true);
-      await this.preloadRemainingFrames();
-      if (!this.destroyed) {
-        this.initScrollAnimation();
-        this.markFramesReady();
-      }
+      this.initScrollAnimation();
+      // Background preload frames 1-191 without blocking animation.
+      // findDrawableFrame() will substitute nearest available frame while loading.
+      this.preloadRemainingFrames()
+        .finally(() => {
+          if (!this.destroyed) {
+            this.markFramesReady();
+          }
+        });
     } catch {
       await this.preloadFallbackImages();
       this.drawFrame(0, true);

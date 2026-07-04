@@ -147,6 +147,107 @@ const SERVICES = [
   },
 ];
 
+const VALUES = [
+  {
+    sort: 1,
+    title: 'Tailored Solutions',
+    body: 'Every business is different. We take the time to understand your requirements and build solutions that align with your goals, processes, and future growth.',
+  },
+  {
+    sort: 2,
+    title: 'Quality Engineering',
+    body: 'We follow modern development practices to create software that is secure, maintainable, and built with long-term reliability in mind.',
+  },
+  {
+    sort: 3,
+    title: 'Built to Scale',
+    body: 'Our solutions are designed with flexibility and scalability, making it easier to adapt and grow as your business evolves.',
+  },
+  {
+    sort: 4,
+    title: 'Transparent Collaboration',
+    body: 'We believe great results come from working together. Throughout every stage of the project, we keep communication open, provide regular updates, and value your feedback.',
+  },
+  {
+    sort: 5,
+    title: 'Ongoing Support',
+    body: "Our commitment doesn't end at launch. We provide maintenance, improvements, and technical support to help keep your software running smoothly.",
+  },
+];
+
+const FAQS = [
+  {
+    sort: 1,
+    question: 'Do you work with startups and small businesses?',
+    answer:
+      'Yes. We enjoy working with startups, entrepreneurs, and growing businesses to transform ideas into practical digital solutions.',
+  },
+  {
+    sort: 2,
+    question: 'Can you build software tailored to our business?',
+    answer:
+      'Absolutely. Every solution we build is designed around your unique requirements, workflows, and business objectives.',
+  },
+  {
+    sort: 3,
+    question: 'Do you provide website maintenance and support?',
+    answer:
+      'Yes. We offer ongoing maintenance, security updates, performance improvements, and technical support for websites and web applications.',
+  },
+  {
+    sort: 4,
+    question: 'Can you improve an existing application or website?',
+    answer:
+      'Yes. We can enhance existing systems by adding new features, improving performance, modernizing the user experience, or resolving technical issues.',
+  },
+  {
+    sort: 5,
+    question: 'What happens after the project is completed?',
+    answer:
+      "We're happy to continue supporting your software with maintenance, enhancements, and technical guidance whenever you need us.",
+  },
+];
+
+const COMPANY_DETAILS = {
+  brandName: 'Gencolink',
+  tagline: 'Building software that supports growth, innovation, and lasting value.',
+  email: 'hello@gencolink.com',
+  phonePrimary: '+94 71 4 280 380',
+  phoneSecondary: '+94 77 5 690 380',
+  linkedinUrl: 'https://www.linkedin.com',
+  githubUrl: 'https://github.com',
+  // Left blank on purpose — the website hides a social icon when its URL is empty,
+  // so these stay off until an admin adds the real profile URL in the CMS.
+  facebookUrl: '',
+  instagramUrl: '',
+  tiktokUrl: '',
+};
+
+const SERVICES_SECTION = {
+  eyebrow: 'Our Services',
+  heading: 'End-to-end engineering for modern businesses',
+  description: 'From strategy to scale, we help you build, integrate, and operate software that drives impact.',
+};
+
+const CONTACT_SECTION = {
+  eyebrow: "Let's Connect",
+  heading: "Let's build something great together",
+  description:
+    "Whether you're starting a new project, exploring an idea, or looking to improve an existing system, we'd love to hear from you. Share your goals with us, and we'll get back to you within one business day.",
+};
+
+const WHY_SECTION = {
+  eyebrow: 'Why Choose Gencolink',
+  heading: 'A reliable partner for building modern software',
+  description:
+    'At Gencolink, we believe successful software is built on clear communication, thoughtful engineering, and a genuine understanding of your goals. We focus on delivering practical, scalable solutions while building long-term relationships based on trust and collaboration.',
+};
+
+const FAQ_SECTION = {
+  eyebrow: 'Frequently Asked Questions',
+  heading: 'Everything you might want to know',
+};
+
 const PRODUCTS = [
   {
     sort: 1,
@@ -213,6 +314,11 @@ async function authenticate() {
 
 async function collectionExists(token, name) {
   const res = await request('GET', `/collections/${name}`, undefined, token);
+  return res.ok;
+}
+
+async function fieldExists(token, collection, field) {
+  const res = await request('GET', `/fields/${collection}/${field}`, undefined, token);
   return res.ok;
 }
 
@@ -386,6 +492,279 @@ async function ensureProductsCollection(token) {
   console.log('  products — created with 4 fields (sort, icon, title, body).');
 }
 
+async function ensureValuesCollection(token) {
+  if (await collectionExists(token, 'values')) {
+    console.log('  values — already exists, skipping.');
+    return;
+  }
+
+  await createCollection(token, 'values', {
+    icon: 'workspace_premium',
+    sort_field: 'sort',
+    note: 'Value cards shown in the "Why Choose Gencolink" section of the website.',
+  });
+
+  const fields = [
+    {
+      field: 'sort',
+      type: 'integer',
+      schema: {},
+      meta: { interface: 'input', hidden: true, width: 'half' },
+    },
+    {
+      field: 'status',
+      type: 'string',
+      schema: { default_value: 'published' },
+      meta: {
+        interface: 'select-dropdown',
+        width: 'half',
+        options: { choices: [{ text: 'Visible', value: 'published' }, { text: 'Hidden', value: 'draft' }] },
+        display: 'labels',
+        display_options: {
+          choices: [
+            { text: 'Visible', value: 'published', foreground: '#087443', background: '#d1fae5' },
+            { text: 'Hidden', value: 'draft', foreground: '#b42318', background: '#fee2e2' },
+          ],
+        },
+      },
+    },
+    {
+      field: 'title',
+      type: 'string',
+      schema: {},
+      meta: { interface: 'input', width: 'full' },
+    },
+    {
+      field: 'body',
+      type: 'text',
+      schema: {},
+      meta: { interface: 'input-multiline', width: 'full', note: 'One or two sentences describing this value.' },
+    },
+  ];
+
+  for (const f of fields) {
+    await createField(token, 'values', f);
+  }
+
+  console.log('  values — created with 4 fields (sort, status, title, body).');
+}
+
+async function ensureFaqsCollection(token) {
+  if (await collectionExists(token, 'faqs')) {
+    console.log('  faqs — already exists, skipping.');
+    return;
+  }
+
+  await createCollection(token, 'faqs', {
+    icon: 'quiz',
+    sort_field: 'sort',
+    note: 'Questions and answers shown in the "Frequently Asked Questions" section of the website.',
+  });
+
+  const fields = [
+    {
+      field: 'sort',
+      type: 'integer',
+      schema: {},
+      meta: { interface: 'input', hidden: true, width: 'half' },
+    },
+    {
+      field: 'status',
+      type: 'string',
+      schema: { default_value: 'published' },
+      meta: {
+        interface: 'select-dropdown',
+        width: 'half',
+        options: { choices: [{ text: 'Visible', value: 'published' }, { text: 'Hidden', value: 'draft' }] },
+        display: 'labels',
+        display_options: {
+          choices: [
+            { text: 'Visible', value: 'published', foreground: '#087443', background: '#d1fae5' },
+            { text: 'Hidden', value: 'draft', foreground: '#b42318', background: '#fee2e2' },
+          ],
+        },
+      },
+    },
+    {
+      field: 'question',
+      type: 'string',
+      schema: {},
+      meta: { interface: 'input', width: 'full' },
+    },
+    {
+      field: 'answer',
+      type: 'text',
+      schema: {},
+      meta: { interface: 'input-multiline', width: 'full' },
+    },
+  ];
+
+  for (const f of fields) {
+    await createField(token, 'faqs', f);
+  }
+
+  console.log('  faqs — created with 4 fields (sort, status, question, answer).');
+}
+
+async function ensureWhySectionCollection(token) {
+  if (await collectionExists(token, 'why_section')) {
+    console.log('  why_section — already exists, skipping.');
+    return;
+  }
+
+  await createCollection(token, 'why_section', {
+    icon: 'workspace_premium',
+    singleton: true,
+    note: 'Eyebrow, heading, and intro text for the "Why Choose Gencolink" section.',
+  });
+
+  const fields = [
+    { field: 'eyebrow', type: 'string', schema: {}, meta: { interface: 'input', width: 'full' } },
+    { field: 'heading', type: 'string', schema: {}, meta: { interface: 'input', width: 'full' } },
+    {
+      field: 'description',
+      type: 'text',
+      schema: {},
+      meta: { interface: 'input-multiline', width: 'full', note: 'Intro paragraph shown next to the heading.' },
+    },
+  ];
+
+  for (const f of fields) {
+    await createField(token, 'why_section', f);
+  }
+
+  console.log('  why_section — created with 3 fields (eyebrow, heading, description).');
+}
+
+async function ensureFaqSectionCollection(token) {
+  if (await collectionExists(token, 'faq_section')) {
+    console.log('  faq_section — already exists, skipping.');
+    return;
+  }
+
+  await createCollection(token, 'faq_section', {
+    icon: 'quiz',
+    singleton: true,
+    note: 'Eyebrow and heading for the "Frequently Asked Questions" section.',
+  });
+
+  const fields = [
+    { field: 'eyebrow', type: 'string', schema: {}, meta: { interface: 'input', width: 'full' } },
+    { field: 'heading', type: 'string', schema: {}, meta: { interface: 'input', width: 'full' } },
+  ];
+
+  for (const f of fields) {
+    await createField(token, 'faq_section', f);
+  }
+
+  console.log('  faq_section — created with 2 fields (eyebrow, heading).');
+}
+
+async function ensureServicesSectionCollection(token) {
+  if (await collectionExists(token, 'services_section')) {
+    console.log('  services_section — already exists, skipping.');
+    return;
+  }
+
+  await createCollection(token, 'services_section', {
+    icon: 'design_services',
+    singleton: true,
+    note: 'Eyebrow, heading, and intro text for the "Our Services" section.',
+  });
+
+  const fields = [
+    { field: 'eyebrow', type: 'string', schema: {}, meta: { interface: 'input', width: 'full' } },
+    { field: 'heading', type: 'string', schema: {}, meta: { interface: 'input', width: 'full' } },
+    {
+      field: 'description',
+      type: 'text',
+      schema: {},
+      meta: { interface: 'input-multiline', width: 'full', note: 'Intro line shown next to the heading.' },
+    },
+  ];
+
+  for (const f of fields) {
+    await createField(token, 'services_section', f);
+  }
+
+  console.log('  services_section — created with 3 fields (eyebrow, heading, description).');
+}
+
+async function ensureContactSectionCollection(token) {
+  if (await collectionExists(token, 'contact_section')) {
+    console.log('  contact_section — already exists, skipping.');
+    return;
+  }
+
+  await createCollection(token, 'contact_section', {
+    icon: 'mail',
+    singleton: true,
+    note: 'Eyebrow, heading, and intro text for the "Contact" section.',
+  });
+
+  const fields = [
+    { field: 'eyebrow', type: 'string', schema: {}, meta: { interface: 'input', width: 'full' } },
+    { field: 'heading', type: 'string', schema: {}, meta: { interface: 'input', width: 'full' } },
+    {
+      field: 'description',
+      type: 'text',
+      schema: {},
+      meta: { interface: 'input-multiline', width: 'full', note: 'Intro line shown above the contact form.' },
+    },
+  ];
+
+  for (const f of fields) {
+    await createField(token, 'contact_section', f);
+  }
+
+  console.log('  contact_section — created with 3 fields (eyebrow, heading, description).');
+}
+
+const COMPANY_DETAILS_FIELDS = [
+  { field: 'brandName', type: 'string', schema: {}, meta: { interface: 'input', width: 'half', note: 'Shown in the header and footer.' } },
+  { field: 'tagline', type: 'string', schema: {}, meta: { interface: 'input', width: 'half' } },
+  { field: 'email', type: 'string', schema: {}, meta: { interface: 'input', width: 'half' } },
+  { field: 'phonePrimary', type: 'string', schema: {}, meta: { interface: 'input', width: 'half' } },
+  { field: 'phoneSecondary', type: 'string', schema: {}, meta: { interface: 'input', width: 'half' } },
+  { field: 'linkedinUrl', type: 'string', schema: {}, meta: { interface: 'input', width: 'half', note: 'Full URL. Leave blank to hide the icon.' } },
+  { field: 'githubUrl', type: 'string', schema: {}, meta: { interface: 'input', width: 'half', note: 'Full URL. Leave blank to hide the icon.' } },
+  { field: 'facebookUrl', type: 'string', schema: {}, meta: { interface: 'input', width: 'half', note: 'Full URL. Leave blank to hide the icon.' } },
+  { field: 'instagramUrl', type: 'string', schema: {}, meta: { interface: 'input', width: 'half', note: 'Full URL. Leave blank to hide the icon.' } },
+  { field: 'tiktokUrl', type: 'string', schema: {}, meta: { interface: 'input', width: 'half', note: 'Full URL. Leave blank to hide the icon.' } },
+];
+
+async function ensureCompanyDetailsCollection(token) {
+  if (await collectionExists(token, 'company_details')) {
+    // Collection already exists (e.g. from an earlier setup run) — backfill any fields
+    // that were added since, such as new social links, without touching the rest.
+    let added = 0;
+    for (const f of COMPANY_DETAILS_FIELDS) {
+      if (!(await fieldExists(token, 'company_details', f.field))) {
+        await createField(token, 'company_details', f);
+        added++;
+      }
+    }
+    console.log(
+      added > 0
+        ? `  company_details — added ${added} new field(s).`
+        : '  company_details — already exists, skipping.',
+    );
+    return;
+  }
+
+  await createCollection(token, 'company_details', {
+    icon: 'apartment',
+    singleton: true,
+    note: 'Brand name, tagline, contact details, and social links shown across the site (mainly the header and footer).',
+  });
+
+  for (const f of COMPANY_DETAILS_FIELDS) {
+    await createField(token, 'company_details', f);
+  }
+
+  console.log(`  company_details — created with ${COMPANY_DETAILS_FIELDS.length} fields (brand, tagline, email, phones, social links).`);
+}
+
 // ─── Permissions ──────────────────────────────────────────────────────────────
 
 async function ensurePublicRead(token, collection) {
@@ -427,6 +806,22 @@ async function seedIfEmpty(token, collection, rows) {
   const createRes = await request('POST', `/items/${collection}`, rows, token);
   if (!createRes.ok) throw new Error(`Seed "${collection}" failed: ${await createRes.text()}`);
   console.log(`  ${collection} — seeded ${rows.length} rows.`);
+}
+
+// Singleton collections have exactly one implicit row; PATCH upserts it (Directus
+// creates the row on first write). Skip if an admin already set `checkField`, so
+// re-runs never clobber edits made in the CMS.
+async function seedSingletonIfEmpty(token, collection, fields, checkField = 'heading') {
+  const res = await request('GET', `/items/${collection}`, undefined, token);
+  const data = res.ok ? (await res.json()).data : null;
+  if (data?.[checkField]) {
+    console.log(`  ${collection} — already configured, skipping seed.`);
+    return;
+  }
+
+  const patchRes = await request('PATCH', `/items/${collection}`, fields, token);
+  if (!patchRes.ok) throw new Error(`Seed singleton "${collection}" failed: ${await patchRes.text()}`);
+  console.log(`  ${collection} — seeded initial content.`);
 }
 
 // ─── Contact submissions collection ───────────────────────────────────────────
@@ -605,18 +1000,39 @@ async function main() {
   console.log('Setting up collections...');
   await ensureServicesCollection(token);
   await ensureProductsCollection(token);
+  await ensureValuesCollection(token);
+  await ensureFaqsCollection(token);
+  await ensureWhySectionCollection(token);
+  await ensureFaqSectionCollection(token);
+  await ensureServicesSectionCollection(token);
+  await ensureContactSectionCollection(token);
+  await ensureCompanyDetailsCollection(token);
   await ensureContactSubmissionsCollection(token);
   console.log();
 
   console.log('Configuring public access...');
   await ensurePublicRead(token, 'services');
   await ensurePublicRead(token, 'products');
+  await ensurePublicRead(token, 'values');
+  await ensurePublicRead(token, 'faqs');
+  await ensurePublicRead(token, 'why_section');
+  await ensurePublicRead(token, 'faq_section');
+  await ensurePublicRead(token, 'services_section');
+  await ensurePublicRead(token, 'contact_section');
+  await ensurePublicRead(token, 'company_details');
   await ensurePublicCreate(token, 'contact_submissions');
   console.log();
 
   console.log('Seeding content...');
   await seedIfEmpty(token, 'services', SERVICES.map((r) => ({ ...r, status: 'published' })));
   await seedIfEmpty(token, 'products', PRODUCTS.map((r) => ({ ...r, status: 'published' })));
+  await seedIfEmpty(token, 'values', VALUES.map((r) => ({ ...r, status: 'published' })));
+  await seedIfEmpty(token, 'faqs', FAQS.map((r) => ({ ...r, status: 'published' })));
+  await seedSingletonIfEmpty(token, 'why_section', WHY_SECTION);
+  await seedSingletonIfEmpty(token, 'faq_section', FAQ_SECTION);
+  await seedSingletonIfEmpty(token, 'services_section', SERVICES_SECTION);
+  await seedSingletonIfEmpty(token, 'contact_section', CONTACT_SECTION);
+  await seedSingletonIfEmpty(token, 'company_details', COMPANY_DETAILS, 'brandName');
   console.log();
 
   console.log('Setting up contact notification flow...');

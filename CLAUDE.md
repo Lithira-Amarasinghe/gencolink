@@ -27,9 +27,15 @@ No CI is configured for this repo yet.
 
 ## Secrets — do not expose
 
-- `Directus/.env` contains real dev secrets and is **not** covered by any `.gitignore` in this repo. Never commit it, and flag to the user if you're asked to touch `.gitignore` near it.
+- `Directus/.env` contains real dev secrets. It's excluded via `Directus/.gitignore`, and a `.git/hooks/pre-commit` hook blocks commits that stage it — don't weaken either without flagging it to the user.
 - `Directus/README.md` contains plaintext admin credentials (`admin@gencolink.com` / a real password). Don't copy these into other files, logs, or commit messages.
 
 ## Ignore these when exploring/committing
 
-`Website/` root has stray QA screenshots, a `qa-screenshot.mjs` script, and `.playwright-mcp/` session dumps. These are disposable manual-QA artifacts, not part of the app — don't treat them as reference material and don't commit new ones.
+`Website/qa-screenshot.mjs` and `.playwright-mcp/` session dumps are disposable manual-QA artifacts, not part of the app — don't treat them as reference material. `.playwright-mcp/` is gitignored; don't commit new dumps.
+
+## Skills
+
+Two user-triggered skills exist under `.claude/skills/` (both `disable-model-invocation: true`, so they only run via explicit slash command, never auto-invoked):
+- `/directus-bootstrap` — starts Directus via Docker Compose and runs the one-time `setup.js` bootstrap.
+- `/functions-local-dev` — bootstraps `functions/local.settings.json` from the example file and runs `func start`.

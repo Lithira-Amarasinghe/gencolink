@@ -10,15 +10,6 @@
         <p data-intro-item>
           {{ contentStore.hero().description }}
         </p>
-        <div class="hero-video-actions" data-intro-item>
-          <a class="primary-button" href="#services">{{ contentStore.hero().primaryCta }}</a>
-          <a class="secondary-button" href="#services">{{ contentStore.hero().secondaryCta }}</a>
-        </div>
-        <div class="hero-proof" data-intro-item>
-          @for (item of contentStore.hero().proofPoints; track item) {
-            <span>{{ item }}</span>
-          }
-        </div>
       </div>
 
       <div class="hero-copy-panel hero-copy-solutions" data-solutions-panel>
@@ -29,9 +20,6 @@
           We bring product strategy, software engineering, cloud delivery, and automation together
           so your platform can grow without adding unnecessary complexity.
         </p>
-        <div class="hero-video-actions hero-solutions-actions" data-solutions-item>
-          <a class="primary-button" href="#services">See What We Do</a>
-        </div>
       </div>
     </div>
   </div>

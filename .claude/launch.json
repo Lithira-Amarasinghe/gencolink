@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Website",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--prefix", "Website"],
+      "port": 4200
+    }
+  ]
+}
