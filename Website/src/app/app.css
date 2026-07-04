@@ -1021,40 +1021,54 @@ textarea {
 
 @media (max-width: 400px) {
   .site-header {
-    min-height: 64px;
-    padding: 0 10px;
-    gap: 8px;
+    grid-template-columns: auto auto auto;
+    min-height: 60px;
+    padding: 0 6px;
+    gap: 4px;
   }
 
   .brand {
-    font-size: 16px;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+  }
+
+  .brand-mark {
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--signal);
   }
 
   .nav-cta {
-    padding: 0 10px;
-    font-size: 11px;
-    min-height: 40px;
+    padding: 0 8px;
+    font-size: 10px;
+    min-height: 36px;
+    white-space: nowrap;
   }
 
   .nav-cta svg {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     display: none;
   }
 
   .menu-button {
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
+    border-width: 0.5px;
   }
 
   svg[lucideMenu],
   svg[lucideX] {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 
   .mobile-nav {
-    top: 64px;
+    top: 60px;
+    padding: 12px 6px 16px;
   }
 
   .section-shell {
