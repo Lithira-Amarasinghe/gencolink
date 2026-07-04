@@ -345,7 +345,7 @@ p {
     background-color 280ms var(--ease-out-quart);
 }
 
-[data-fade-in] .service-row {
+[data-fade-in].fade-in-visible .service-row {
   opacity: 0;
   animation: slideInLeft 600ms var(--ease-out-quart) forwards;
   animation-delay: calc(var(--i, 0) * 80ms);
@@ -550,7 +550,7 @@ p {
     opacity 300ms var(--ease-out-quart);
 }
 
-[data-fade-in] .value-item {
+[data-fade-in].fade-in-visible .value-item {
   opacity: 0;
   animation: slideUp 700ms var(--ease-out-quart) forwards;
   animation-delay: calc(var(--i, 0) * 100ms);
