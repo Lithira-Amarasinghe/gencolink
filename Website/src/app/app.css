@@ -924,11 +924,16 @@ textarea {
     gap: 12px;
   }
 
+  .brand {
+    grid-column: 1;
+  }
+
   .desktop-nav {
     display: none;
   }
 
   .nav-cta {
+    grid-column: 3;
     justify-self: auto;
     padding: 0 16px;
     font-size: 13px;
@@ -941,6 +946,7 @@ textarea {
   }
 
   .menu-button {
+    grid-column: 4;
     display: grid;
     place-items: center;
     width: 46px;
