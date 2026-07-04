@@ -343,7 +343,11 @@ p {
   transition:
     border-color 280ms var(--ease-out-quart),
     background-color 280ms var(--ease-out-quart);
-  animation: slideInLeft 600ms var(--ease-out-quart) backwards;
+}
+
+[data-fade-in] .service-row {
+  opacity: 0;
+  animation: slideInLeft 600ms var(--ease-out-quart) forwards;
   animation-delay: calc(var(--i, 0) * 80ms);
 }
 
@@ -541,11 +545,15 @@ p {
 .value-item {
   padding: clamp(28px, 3vw, 38px) 0;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
-  animation: slideUp 700ms var(--ease-out-quart) backwards;
-  animation-delay: calc(var(--i, 0) * 100ms);
   transition:
     transform 300ms var(--ease-out-quart),
     opacity 300ms var(--ease-out-quart);
+}
+
+[data-fade-in] .value-item {
+  opacity: 0;
+  animation: slideUp 700ms var(--ease-out-quart) forwards;
+  animation-delay: calc(var(--i, 0) * 100ms);
 }
 
 .value-node {
