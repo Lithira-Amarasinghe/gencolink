@@ -1,7 +1,7 @@
 <header class="site-header">
-  <a class="brand" href="#top" aria-label="Gencolink home">
+  <a class="brand" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
     <span class="brand-mark" aria-hidden="true"></span>
-    Gencolink
+    {{ contentStore.companyDetails().brandName }}
   </a>
 
   <nav class="desktop-nav" aria-label="Primary navigation">
@@ -10,7 +10,7 @@
     }
   </nav>
 
-  <button class="nav-cta desktop-only" type="button" (click)="scrollTo('contact')">
+  <button class="nav-cta" type="button" (click)="scrollTo('contact')">
     Let's Talk
     <svg lucideArrowRight aria-hidden="true"></svg>
   </button>
@@ -35,220 +35,96 @@
     @for (item of navItems; track item.target) {
       <button type="button" (click)="scrollTo(item.target)">{{ item.label }}</button>
     }
-    <button class="nav-cta" type="button" (click)="scrollTo('contact')">
-      Let's Talk
-      <svg lucideArrowRight aria-hidden="true"></svg>
-    </button>
   </nav>
 }
 
 <main id="top">
   <app-hero-video />
 
-  <section id="services" class="section-shell services-section" aria-labelledby="services-title">
+  <section id="services" class="section-shell services-section" data-fade-in aria-labelledby="services-title">
     <div class="section-heading split">
       <div>
-        <p class="eyebrow">What we do</p>
-        <h2 id="services-title">End-to-end engineering for modern businesses</h2>
+        <p class="eyebrow">{{ contentStore.servicesSection().eyebrow }}</p>
+        <h2 id="services-title">{{ contentStore.servicesSection().heading }}</h2>
       </div>
-      <p>From strategy to scale, we help you build, integrate, and operate software that drives impact.</p>
+      <p>{{ contentStore.servicesSection().description }}</p>
     </div>
 
-    <div class="service-catalog" aria-label="Gencolink service catalog">
-      @for (service of contentStore.services(); track service.title) {
-        <details class="service-card">
-          <summary>
-            <span class="icon-tile">
-              @switch (service.icon) {
-                @case ('code') {
-                  <svg lucideCode2 aria-hidden="true"></svg>
-                }
-                @case ('cloud') {
-                  <svg lucideCloud aria-hidden="true"></svg>
-                }
-                @case ('data') {
-                  <svg lucideDatabaseZap aria-hidden="true"></svg>
-                }
-                @case ('workflow') {
-                  <svg lucideWorkflow aria-hidden="true"></svg>
-                }
-                @case ('globe') {
-                  <svg lucideGlobe aria-hidden="true"></svg>
-                }
-                @default {
-                  <svg lucideShieldCheck aria-hidden="true"></svg>
-                }
-              }
-            </span>
-            <span class="service-summary-copy">
-              <span class="service-title">{{ service.title }}</span>
-              <span class="service-body">{{ service.body }}</span>
-            </span>
-            <span class="service-expand" aria-hidden="true">View</span>
-          </summary>
+    <div class="service-list" aria-label="Gencolink service catalog">
+      @for (service of contentStore.services(); track service.title; let i = $index) {
+        <div class="service-row">
+          <span class="service-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
+          <span class="service-row-copy">
+            <span class="service-title">{{ service.title }}</span>
+            <span class="service-body">{{ service.body }}</span>
+          </span>
+          <button type="button" class="text-link service-explore" (click)="scrollTo('contact')">
+            Explore
+            <svg lucideArrowRight aria-hidden="true"></svg>
+          </button>
+        </div>
+      }
+    </div>
+  </section>
 
-          <div class="service-details">
-            <ul>
-              @for (item of service.items; track item) {
-                <li>
-                  <svg lucideCheckCircle aria-hidden="true"></svg>
-                  {{ item }}
-                </li>
-              }
-            </ul>
-            <button type="button" class="text-link" (click)="scrollTo('contact')">
-              Discuss this service
-              <svg lucideArrowRight aria-hidden="true"></svg>
-            </button>
+  <section id="why" class="why-section" data-fade-in aria-labelledby="why-title">
+    <div class="section-shell">
+      <div class="why-intro">
+        <div class="why-intro-head">
+          <p class="eyebrow eyebrow--invert">{{ contentStore.whySection().eyebrow }}</p>
+          <h2 id="why-title">{{ contentStore.whySection().heading }}</h2>
+        </div>
+        <p class="why-lead">{{ contentStore.whySection().description }}</p>
+      </div>
+
+      <ul class="value-grid">
+        @for (value of contentStore.values(); track value.title) {
+          <li class="value-item">
+            <span class="value-node" aria-hidden="true"></span>
+            <h3>{{ value.title }}</h3>
+            <p>{{ value.body }}</p>
+          </li>
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section id="faq" class="section-shell faq-section" data-fade-in aria-labelledby="faq-title">
+    <div class="section-heading split">
+      <div>
+        <p class="eyebrow">{{ contentStore.faqSection().eyebrow }}</p>
+        <h2 id="faq-title">{{ contentStore.faqSection().heading }}</h2>
+      </div>
+      <p class="faq-aside">
+        Can't find your answer?
+        <button type="button" class="text-link" (click)="scrollTo('contact')">
+          Talk to us
+          <svg lucideArrowRight aria-hidden="true"></svg>
+        </button>
+      </p>
+    </div>
+
+    <div class="faq-list">
+      @for (item of contentStore.faqs(); track item.question) {
+        <details class="faq-item" name="faq">
+          <summary>
+            <span class="faq-question">{{ item.question }}</span>
+            <span class="faq-marker" aria-hidden="true"></span>
+          </summary>
+          <div class="faq-answer">
+            <p>{{ item.answer }}</p>
           </div>
         </details>
       }
     </div>
   </section>
 
-  <section id="products" class="products-band" aria-labelledby="products-title">
-    <div class="section-shell">
-      <div class="section-heading inline">
-        <div>
-          <p class="eyebrow">Our products</p>
-          <h2 id="products-title">Solutions that ship value</h2>
-        </div>
-        <button type="button" class="text-link" (click)="scrollTo('contact')">
-          Explore all products
-          <svg lucideArrowRight aria-hidden="true"></svg>
-        </button>
-      </div>
-
-      <div class="product-grid">
-        @for (product of contentStore.products(); track product.title) {
-          <article class="product-item">
-            <div class="product-icon">
-              @switch (product.icon) {
-                @case ('workflow') {
-                  <svg lucideWorkflow aria-hidden="true"></svg>
-                }
-                @case ('data') {
-                  <svg lucideDatabaseZap aria-hidden="true"></svg>
-                }
-                @case ('lock') {
-                  <svg lucideLockKeyhole aria-hidden="true"></svg>
-                }
-                @default {
-                  <svg lucideGlobe aria-hidden="true"></svg>
-                }
-              }
-            </div>
-            <div>
-              <h3>{{ product.title }}</h3>
-              <p>{{ product.body }}</p>
-            </div>
-          </article>
-        }
-      </div>
-    </div>
-  </section>
-
-  <section id="work" class="section-shell work-section" aria-labelledby="work-title">
-    <div class="section-heading inline">
-      <div>
-        <p class="eyebrow">Our work</p>
-        <h2 id="work-title">Real impact, measurable results</h2>
-      </div>
-      <button type="button" class="text-link" (click)="openCaseStudy(contentStore.caseStudies()[0])">
-        View case studies
-        <svg lucideArrowRight aria-hidden="true"></svg>
-      </button>
-    </div>
-
-    <div class="case-grid">
-      @for (caseStudy of contentStore.caseStudies(); track caseStudy.title) {
-        <article class="case-card">
-          <button type="button" class="case-media" (click)="openCaseStudy(caseStudy)">
-            <img
-              [ngSrc]="caseStudy.image"
-              width="760"
-              height="430"
-              loading="eager"
-              alt="{{ caseStudy.title }} case study visual"
-            />
-          </button>
-          <div class="case-body">
-            <p class="case-label">{{ caseStudy.industry }}</p>
-            <h3>{{ caseStudy.title }}</h3>
-            <p>{{ caseStudy.summary }}</p>
-            <div class="case-stats">
-              @for (stat of caseStudy.stats; track stat.label) {
-                <span>
-                  <strong>{{ stat.value }}</strong>
-                  {{ stat.label }}
-                </span>
-              }
-            </div>
-          </div>
-        </article>
-      }
-    </div>
-  </section>
-
-  <section class="metrics-band" aria-label="Gencolink impact metrics">
-    <div class="metric">
-      <svg lucideRocket aria-hidden="true"></svg>
-      <strong>200+</strong>
-      <span>Projects delivered across industries</span>
-    </div>
-    <div class="metric">
-      <svg lucideUsers aria-hidden="true"></svg>
-      <strong>120+</strong>
-      <span>Happy clients worldwide</span>
-    </div>
-    <div class="metric">
-      <svg lucideShieldCheck aria-hidden="true"></svg>
-      <strong>98%</strong>
-      <span>Client satisfaction score</span>
-    </div>
-    <div class="metric">
-      <svg lucideGlobe aria-hidden="true"></svg>
-      <strong>15+</strong>
-      <span>Countries served and counting</span>
-    </div>
-  </section>
-
-  <section id="careers" class="section-shell careers-section" aria-labelledby="careers-title">
-    <div class="careers-copy">
-      <p class="eyebrow">Careers</p>
-      <h2 id="careers-title">Build the future with us</h2>
-      <p>We're a team of builders, problem solvers, and innovators creating technology that makes a difference.</p>
-      <button class="secondary-button" type="button" (click)="toggleRoles()" [attr.aria-expanded]="rolesOpen()">
-        View open roles
-        <svg lucideArrowRight aria-hidden="true"></svg>
-      </button>
-    </div>
-
-    <div class="culture-list" aria-label="Gencolink culture benefits">
-      <span><svg lucideCheckCircle aria-hidden="true"></svg>Flexible work</span>
-      <span><svg lucideBriefcaseBusiness aria-hidden="true"></svg>Learning budget</span>
-      <span><svg lucideHeartPulse aria-hidden="true"></svg>Health and wellness</span>
-      <span><svg lucideHandshake aria-hidden="true"></svg>Ownership culture</span>
-    </div>
-
-    @if (rolesOpen()) {
-      <div class="roles-panel" aria-label="Open roles">
-        @for (role of openRoles; track role) {
-          <button type="button" (click)="scrollTo('contact')">
-            {{ role }}
-            <svg lucideArrowRight aria-hidden="true"></svg>
-          </button>
-        }
-      </div>
-    }
-  </section>
-
-  <section id="contact" class="contact-section" aria-labelledby="contact-title">
+  <section id="contact" class="contact-section" data-fade-in aria-labelledby="contact-title">
     <div class="section-shell contact-layout">
-      <div>
-        <p class="eyebrow">Let's connect</p>
-        <h2 id="contact-title">Have a project in mind?</h2>
-        <p>Tell us about your goals and we'll get back within one business day.</p>
+      <div class="contact-copy">
+        <p class="eyebrow">{{ contentStore.contactSection().eyebrow }}</p>
+        <h2 id="contact-title">{{ contentStore.contactSection().heading }}</h2>
+        <p>{{ contentStore.contactSection().description }}</p>
       </div>
 
       <form [formGroup]="contactForm" (ngSubmit)="submitContact()" novalidate>
@@ -261,7 +137,7 @@
           <input type="email" formControlName="email" autocomplete="email" placeholder="you@company.com" />
         </label>
         <label>
-          <span>Company</span>
+          <span>Company <em>(optional)</em></span>
           <input type="text" formControlName="company" autocomplete="organization" placeholder="Your company" />
         </label>
         <label class="message-field">
@@ -269,7 +145,7 @@
           <textarea formControlName="message" rows="4" placeholder="Share a few details about your project"></textarea>
         </label>
         @if (submitted() && contactForm.invalid) {
-          <p class="form-alert" role="alert">Please complete all fields with valid details.</p>
+          <p class="form-alert" role="alert">Please add your name, a valid email, and a short message.</p>
         }
         <button class="primary-button submit-button" type="submit" [disabled]="submitting()">
           @if (submitting()) {
@@ -285,30 +161,77 @@
 </main>
 
 <footer class="site-footer">
-  <div>
-    <a class="brand" href="#top" aria-label="Gencolink home">Gencolink</a>
-    <p>Software systems that connect growth.</p>
+  <div class="footer-brand">
+    <a class="brand" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
+      <span class="brand-mark" aria-hidden="true"></span>
+      {{ contentStore.companyDetails().brandName }}
+    </a>
+    <p>{{ contentStore.companyDetails().tagline }}</p>
   </div>
   <div>
     <h2>Company</h2>
-    <button type="button" (click)="scrollTo('services')">About us</button>
-    <button type="button" (click)="scrollTo('careers')">Careers</button>
+    <button type="button" (click)="scrollTo('why')">About</button>
+    <button type="button" (click)="scrollTo('services')">Services</button>
+    <button type="button" (click)="scrollTo('faq')">FAQ</button>
     <button type="button" (click)="scrollTo('contact')">Contact</button>
   </div>
   <div>
-    <h2>Services</h2>
-    <button type="button" (click)="scrollTo('services')">Custom Development</button>
-    <button type="button" (click)="scrollTo('services')">Cloud and DevOps</button>
-    <button type="button" (click)="scrollTo('services')">Integration</button>
-  </div>
-  <div>
-    <h2>Let's connect</h2>
-    <a href="mailto:hello@gencolink.com"><svg lucideMail aria-hidden="true"></svg>hello&#64;gencolink.com</a>
-    <a href="tel:+94714280380">+94 71 4 280 380</a>
-    <a href="tel:+94775690380">+94 77 5 690 380</a>
+    <h2>Contact</h2>
+    <a [href]="'mailto:' + contentStore.companyDetails().email">
+      <svg lucideMail aria-hidden="true"></svg>{{ contentStore.companyDetails().email }}
+    </a>
+    <a [href]="telHref(contentStore.companyDetails().phonePrimary)">{{
+      contentStore.companyDetails().phonePrimary
+    }}</a>
+    <a [href]="telHref(contentStore.companyDetails().phoneSecondary)">{{
+      contentStore.companyDetails().phoneSecondary
+    }}</a>
     <div class="social-links" aria-label="Social links">
-      <a href="https://www.linkedin.com" aria-label="LinkedIn"><svg lucideLink aria-hidden="true"></svg></a>
-      <a href="https://github.com" aria-label="GitHub"><svg lucideCode2 aria-hidden="true"></svg></a>
+      @if (contentStore.companyDetails().linkedinUrl) {
+        <a [href]="contentStore.companyDetails().linkedinUrl" aria-label="LinkedIn">
+          <svg lucideLink aria-hidden="true"></svg>
+        </a>
+      }
+      @if (contentStore.companyDetails().githubUrl) {
+        <a [href]="contentStore.companyDetails().githubUrl" aria-label="GitHub">
+          <svg lucideCode2 aria-hidden="true"></svg>
+        </a>
+      }
+      @if (contentStore.companyDetails().facebookUrl) {
+        <a [href]="contentStore.companyDetails().facebookUrl" aria-label="Facebook">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M22 12a10 10 0 1 0-11.5 9.9v-7H8v-2.9h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6v1.9h2.8L15 14.9h-2.4v7A10 10 0 0 0 22 12Z"
+            />
+          </svg>
+        </a>
+      }
+      @if (contentStore.companyDetails().instagramUrl) {
+        <a [href]="contentStore.companyDetails().instagramUrl" aria-label="Instagram">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+          </svg>
+        </a>
+      }
+      @if (contentStore.companyDetails().tiktokUrl) {
+        <a [href]="contentStore.companyDetails().tiktokUrl" aria-label="TikTok">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"
+            />
+          </svg>
+        </a>
+      }
     </div>
   </div>
 </footer>
@@ -322,35 +245,4 @@
     }
     <span>{{ t.message }}</span>
   </div>
-}
-
-@if (activeCaseStudy(); as selectedCase) {
-  <div class="modal-backdrop" role="presentation" (click)="closeCaseStudy()"></div>
-  <section class="case-modal" role="dialog" aria-modal="true" aria-labelledby="case-modal-title">
-    <button class="modal-close" type="button" aria-label="Close case study" (click)="closeCaseStudy()">
-      <svg lucideX aria-hidden="true"></svg>
-    </button>
-    <img
-      [ngSrc]="selectedCase.image"
-      width="760"
-      height="430"
-      loading="eager"
-      alt="{{ selectedCase.title }} case study visual"
-    />
-    <p class="case-label">{{ selectedCase.industry }}</p>
-    <h2 id="case-modal-title">{{ selectedCase.title }}</h2>
-    <p>{{ selectedCase.summary }}</p>
-    <div class="case-stats">
-      @for (stat of selectedCase.stats; track stat.label) {
-        <span>
-          <strong>{{ stat.value }}</strong>
-          {{ stat.label }}
-        </span>
-      }
-    </div>
-    <button class="primary-button" type="button" (click)="scrollTo('contact')">
-      Discuss a similar project
-      <svg lucideArrowRight aria-hidden="true"></svg>
-    </button>
-  </section>
 }
