@@ -44,10 +44,10 @@
   <section id="services" class="section-shell services-section" data-fade-in aria-labelledby="services-title">
     <div class="section-heading split">
       <div>
-        <p class="eyebrow">{{ contentStore.servicesSection().eyebrow }}</p>
-        <h2 id="services-title">{{ contentStore.servicesSection().heading }}</h2>
+        <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.servicesSection().eyebrow }}</p>
+        <h2 id="services-title" class="reveal-item" style="--i: 1">{{ contentStore.servicesSection().heading }}</h2>
       </div>
-      <p>{{ contentStore.servicesSection().description }}</p>
+      <p class="reveal-item" style="--i: 2">{{ contentStore.servicesSection().description }}</p>
     </div>
 
     <div class="service-list" aria-label="Gencolink service catalog">
@@ -71,10 +71,10 @@
     <div class="section-shell">
       <div class="why-intro">
         <div class="why-intro-head">
-          <p class="eyebrow eyebrow--invert">{{ contentStore.whySection().eyebrow }}</p>
-          <h2 id="why-title">{{ contentStore.whySection().heading }}</h2>
+          <p class="eyebrow eyebrow--invert reveal-item" style="--i: 0">{{ contentStore.whySection().eyebrow }}</p>
+          <h2 id="why-title" class="reveal-item" style="--i: 1">{{ contentStore.whySection().heading }}</h2>
         </div>
-        <p class="why-lead">{{ contentStore.whySection().description }}</p>
+        <p class="why-lead reveal-item" style="--i: 2">{{ contentStore.whySection().description }}</p>
       </div>
 
       <ul class="value-grid">
@@ -92,10 +92,10 @@
   <section id="faq" class="section-shell faq-section" data-fade-in aria-labelledby="faq-title">
     <div class="section-heading split">
       <div>
-        <p class="eyebrow">{{ contentStore.faqSection().eyebrow }}</p>
-        <h2 id="faq-title">{{ contentStore.faqSection().heading }}</h2>
+        <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.faqSection().eyebrow }}</p>
+        <h2 id="faq-title" class="reveal-item" style="--i: 1">{{ contentStore.faqSection().heading }}</h2>
       </div>
-      <p class="faq-aside">
+      <p class="faq-aside reveal-item" style="--i: 2">
         Can't find your answer?
         <button type="button" class="text-link" (click)="scrollTo('contact')">
           Talk to us
@@ -105,8 +105,8 @@
     </div>
 
     <div class="faq-list">
-      @for (item of contentStore.faqs(); track item.question) {
-        <details class="faq-item" name="faq">
+      @for (item of contentStore.faqs(); track item.question; let i = $index) {
+        <details class="faq-item reveal-item" [style.--i]="i" name="faq">
           <summary>
             <span class="faq-question">{{ item.question }}</span>
             <span class="faq-marker" aria-hidden="true"></span>
@@ -122,12 +122,18 @@
   <section id="contact" class="contact-section" data-fade-in aria-labelledby="contact-title">
     <div class="section-shell contact-layout">
       <div class="contact-copy">
-        <p class="eyebrow">{{ contentStore.contactSection().eyebrow }}</p>
-        <h2 id="contact-title">{{ contentStore.contactSection().heading }}</h2>
-        <p>{{ contentStore.contactSection().description }}</p>
+        <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.contactSection().eyebrow }}</p>
+        <h2 id="contact-title" class="reveal-item" style="--i: 1">{{ contentStore.contactSection().heading }}</h2>
+        <p class="reveal-item" style="--i: 2">{{ contentStore.contactSection().description }}</p>
       </div>
 
-      <form [formGroup]="contactForm" (ngSubmit)="submitContact()" novalidate>
+      <form
+        [formGroup]="contactForm"
+        (ngSubmit)="submitContact()"
+        novalidate
+        class="reveal-item"
+        style="--i: 3"
+      >
         <label>
           <span>Full name</span>
           <input type="text" formControlName="name" autocomplete="name" placeholder="Your name" />
@@ -161,21 +167,21 @@
 </main>
 
 <footer class="site-footer">
-  <div class="footer-brand">
+  <div class="footer-brand reveal-item" style="--i: 0">
     <a class="brand" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
       <span class="brand-mark" aria-hidden="true"></span>
       {{ contentStore.companyDetails().brandName }}
     </a>
     <p>{{ contentStore.companyDetails().tagline }}</p>
   </div>
-  <div>
+  <div class="reveal-item" style="--i: 1">
     <h2>Company</h2>
     <button type="button" (click)="scrollTo('why')">About</button>
     <button type="button" (click)="scrollTo('services')">Services</button>
     <button type="button" (click)="scrollTo('faq')">FAQ</button>
     <button type="button" (click)="scrollTo('contact')">Contact</button>
   </div>
-  <div>
+  <div class="reveal-item" style="--i: 2">
     <h2>Contact</h2>
     <a [href]="'mailto:' + contentStore.companyDetails().email">
       <svg lucideMail aria-hidden="true"></svg>{{ contentStore.companyDetails().email }}

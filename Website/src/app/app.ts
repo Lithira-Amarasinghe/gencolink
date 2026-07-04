@@ -95,7 +95,7 @@ export class App implements AfterViewInit {
       { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
     );
 
-    const itemsToObserve = document.querySelectorAll('.service-row, .value-item');
+    const itemsToObserve = document.querySelectorAll('.service-row, .value-item, .reveal-item');
     itemsToObserve.forEach((el) => itemObserver.observe(el));
   }
 

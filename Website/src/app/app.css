@@ -749,6 +749,19 @@ p {
   }
 }
 
+/* ---------- Generic scroll reveal (headings, descriptions, per-item lists) ---------- */
+
+.reveal-item {
+  opacity: 0;
+  animation: slideUp 650ms var(--ease-out-quart) forwards;
+  animation-delay: calc(var(--i, 0) * 100ms);
+  animation-play-state: paused;
+}
+
+.reveal-item.animate-in-view {
+  animation-play-state: running;
+}
+
 /* ---------- Contact ---------- */
 
 .contact-section {
