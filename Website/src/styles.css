@@ -1,4 +1,34 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* Brand */
+  --ink: #0b1330;
+  --navy: #162162;
+  --blue: #19428b;
+  --signal: #0f80cb;
+  --signal-bright: #4ea8e8;
+  --paper: #fafafa;
+  --white: #ffffff;
+  --slate: #55647c;
+  --slate-soft: #7a89a3;
+
+  /* Structural */
+  --line: rgba(22, 33, 98, 0.12);
+  --line-soft: rgba(22, 33, 98, 0.08);
+  --signal-soft: rgba(15, 128, 203, 0.14);
+  --navy-soft: rgba(22, 33, 98, 0.06);
+
+  /* Type */
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Motion: smooth & elegant curves */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-quart: cubic-bezier(0.5, 0, 0.75, 0);
+}
 
 *,
 *::before,
@@ -7,17 +37,41 @@
 }
 
 html {
+  /* Explicit background + color-scheme so any gutter/overscroll sliver not covered by
+     body (e.g. scrollbar reflow, elastic overscroll) never falls back to the browser's
+     dark-mode default canvas color — this page is always light, regardless of OS theme. */
+  background: var(--paper);
+  color-scheme: light;
   scroll-behavior: smooth;
-  overflow-x: hidden;
+  /* overflow-x lives on body only. Setting it on BOTH html and body makes both into
+     scroll containers, which breaks position:sticky on descendants (e.g. .site-header
+     silently stopped sticking and scrolled away like a normal element). */
 }
 
 body {
   min-width: 320px;
   margin: 0;
-  background: #fafafa;
+  background: var(--paper);
   overflow-x: hidden;
+  font-family: var(--font-body);
+}
+
+app-root {
+  display: block;
+  background: var(--paper);
 }
 
 img {
   max-width: 100%;
+}
+
+::selection {
+  background: var(--signal);
+  color: var(--white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

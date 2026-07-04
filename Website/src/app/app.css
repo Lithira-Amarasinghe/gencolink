@@ -135,10 +135,10 @@ textarea:focus-visible {
   font-family: var(--font-body);
   font-weight: 700;
   transition:
-    background-color 200ms ease,
-    border-color 200ms ease,
-    transform 200ms var(--ease-out),
-    box-shadow 200ms ease;
+    background-color 300ms var(--ease-out-quart),
+    border-color 300ms var(--ease-out-quart),
+    transform 300ms var(--ease-out-quart),
+    box-shadow 300ms var(--ease-out-quart);
 }
 
 .nav-cta:hover,
@@ -146,17 +146,23 @@ textarea:focus-visible {
   background: var(--signal);
   border-color: var(--signal);
   box-shadow: 0 12px 28px rgba(15, 128, 203, 0.28);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+}
+
+.nav-cta:active,
+.primary-button:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 12px rgba(15, 128, 203, 0.16);
 }
 
 .nav-cta svg,
 .primary-button svg {
-  transition: transform 200ms var(--ease-out);
+  transition: transform 320ms var(--ease-out-quart);
 }
 
 .nav-cta:hover svg,
 .primary-button:hover svg {
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
 
 .nav-cta {
@@ -175,15 +181,19 @@ textarea:focus-visible {
   color: var(--navy);
   font-weight: 700;
   transition:
-    border-color 200ms ease,
-    background-color 200ms ease,
-    transform 200ms var(--ease-out);
+    border-color 300ms var(--ease-out-quart),
+    background-color 300ms var(--ease-out-quart),
+    transform 300ms var(--ease-out-quart);
 }
 
 .secondary-button:hover {
   border-color: var(--navy);
   background: var(--navy-soft);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+}
+
+.secondary-button:active {
+  transform: translateY(0);
 }
 
 .text-link {
@@ -330,7 +340,11 @@ p {
   align-items: center;
   padding: 28px 0;
   border-bottom: 1px solid var(--line-soft);
-  transition: border-color 200ms ease;
+  transition:
+    border-color 280ms var(--ease-out-quart),
+    background-color 280ms var(--ease-out-quart);
+  animation: slideInLeft 600ms var(--ease-out-quart) backwards;
+  animation-delay: calc(var(--i, 0) * 80ms);
 }
 
 .service-row:first-child {
@@ -343,6 +357,7 @@ p {
 
 .service-row:hover {
   border-color: var(--signal);
+  background-color: rgba(15, 128, 203, 0.04);
 }
 
 .service-index {
@@ -352,11 +367,14 @@ p {
   font-weight: 700;
   line-height: 1;
   opacity: 0.14;
-  transition: opacity 200ms ease;
+  transition:
+    opacity 300ms var(--ease-out-quart),
+    transform 300ms var(--ease-out-quart);
 }
 
 .service-row:hover .service-index {
   opacity: 0.32;
+  transform: scale(1.08);
 }
 
 .service-row-copy {
@@ -523,6 +541,11 @@ p {
 .value-item {
   padding: clamp(28px, 3vw, 38px) 0;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
+  animation: slideUp 700ms var(--ease-out-quart) backwards;
+  animation-delay: calc(var(--i, 0) * 100ms);
+  transition:
+    transform 300ms var(--ease-out-quart),
+    opacity 300ms var(--ease-out-quart);
 }
 
 .value-node {
@@ -608,7 +631,7 @@ p {
   line-height: 1.3;
   color: var(--navy);
   text-wrap: balance;
-  transition: color 180ms ease;
+  transition: color 280ms var(--ease-out-quart);
 }
 
 .faq-item:hover .faq-question,
@@ -643,8 +666,8 @@ p {
   width: 2px;
   height: 16px;
   transition:
-    transform 260ms var(--ease-out),
-    opacity 220ms ease;
+    transform 320ms var(--ease-out-quart),
+    opacity 280ms var(--ease-out-quart);
 }
 
 .faq-item[open] .faq-marker::after {
@@ -654,7 +677,7 @@ p {
 
 .faq-answer {
   padding: 0 clamp(28px, 6vw, 80px) clamp(22px, 2.4vw, 30px) 4px;
-  animation: faqReveal 320ms var(--ease-out);
+  animation: faqReveal 400ms var(--ease-out-quart);
 }
 
 .faq-answer p {
@@ -674,6 +697,37 @@ p {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes valueItemPulse {
+  from {
+    background-color: transparent;
+  }
+  to {
+    background-color: transparent;
   }
 }
 
@@ -719,6 +773,12 @@ label {
   font-weight: 500;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  transition: color 280ms var(--ease-out-quart);
+}
+
+label:has(input:focus),
+label:has(textarea:focus) {
+  color: var(--signal);
 }
 
 input,
@@ -730,8 +790,14 @@ textarea {
   color: var(--navy);
   font-family: var(--font-body);
   transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease;
+    border-color 280ms var(--ease-out-quart),
+    box-shadow 280ms var(--ease-out-quart),
+    background-color 280ms var(--ease-out-quart);
+}
+
+input:hover,
+textarea:hover {
+  border-color: rgba(22, 33, 98, 0.24);
 }
 
 input:focus,
@@ -739,6 +805,7 @@ textarea:focus {
   border-color: var(--signal);
   outline: none;
   box-shadow: 0 0 0 3px var(--signal-soft);
+  background-color: rgba(15, 128, 203, 0.02);
 }
 
 input {
@@ -766,6 +833,7 @@ textarea {
   font-size: 14px;
   font-weight: 700;
   color: #b42318;
+  animation: slideUp 400ms var(--ease-out-quart);
 }
 
 /* ---------- Toast ---------- */
@@ -785,7 +853,7 @@ textarea {
   font-size: 15px;
   font-weight: 600;
   box-shadow: 0 8px 32px rgba(11, 19, 48, 0.24);
-  animation: toast-in 0.3s var(--ease-out);
+  animation: toast-in 0.4s var(--ease-out-quart) forwards;
   max-width: 360px;
 }
 
@@ -793,6 +861,7 @@ textarea {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  transition: transform 400ms var(--ease-out-quart);
 }
 
 .toast--error {
@@ -802,7 +871,7 @@ textarea {
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(-16px) scale(0.95);
+    transform: translateY(-20px) scale(0.92);
   }
   to {
     opacity: 1;
@@ -1233,5 +1302,16 @@ textarea {
 
   .site-footer {
     padding: 44px 24px;
+  }
+}
+
+/* Accessibility: respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

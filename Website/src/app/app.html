@@ -52,7 +52,7 @@
 
     <div class="service-list" aria-label="Gencolink service catalog">
       @for (service of contentStore.services(); track service.title; let i = $index) {
-        <div class="service-row">
+        <div class="service-row" [style.--i]="i">
           <span class="service-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
           <span class="service-row-copy">
             <span class="service-title">{{ service.title }}</span>
@@ -78,8 +78,8 @@
       </div>
 
       <ul class="value-grid">
-        @for (value of contentStore.values(); track value.title) {
-          <li class="value-item">
+        @for (value of contentStore.values(); track value.title; let i = $index) {
+          <li class="value-item" [style.--i]="i">
             <span class="value-node" aria-hidden="true"></span>
             <h3>{{ value.title }}</h3>
             <p>{{ value.body }}</p>
