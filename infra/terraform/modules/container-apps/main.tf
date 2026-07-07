@@ -130,15 +130,23 @@ resource "azurerm_container_app" "directus" {
 # Note: no autoscale rule - Directus is capped at a single replica (see
 # max_replicas above) because SQLite only supports one writer at a time.
 
-# Application Insights diagnostic settings
+# Application Insights diagnostic settings.
+# Note: targets the Container App *Environment*, not the individual Container
+# App - console/system log categories for Container Apps are only exposed at
+# the environment scope; the per-app resource supports no log category groups
+# at all (Azure API confirms: "supported [category groups] are: ''").
 resource "azurerm_monitor_diagnostic_setting" "container_app" {
   count                      = var.enable_app_insights ? 1 : 0
   name                       = "${local.resource_suffix}-directus-diag"
-  target_resource_id         = azurerm_container_app.directus.id
+  target_resource_id         = azurerm_container_app_environment.main.id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
 
   enabled_log {
-    category_group = "allLogs"
+    category = "ContainerAppConsoleLogs"
+  }
+
+  enabled_log {
+    category = "ContainerAppSystemLogs"
   }
 
   enabled_metric {

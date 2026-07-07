@@ -129,13 +129,13 @@ variable "github_repo_url" {
 variable "github_owner" {
   description = "GitHub org/user that owns the repository"
   type        = string
-  default     = "Lithira"
+  default     = "Lithira-Amarasinghe"
 }
 
 variable "github_repository" {
   description = "GitHub repository name (no owner prefix)"
   type        = string
-  default     = "Gencolink"
+  default     = "gencolink"
 }
 
 variable "github_branch" {

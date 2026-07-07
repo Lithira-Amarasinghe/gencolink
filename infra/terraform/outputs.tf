@@ -29,6 +29,12 @@ output "directus_admin_password" {
   sensitive   = true
 }
 
+output "azure_swa_deployment_token" {
+  description = "Static Web App deployment token for GitHub Actions (terraform output -raw azure_swa_deployment_token)"
+  value       = module.static_web_app.api_key
+  sensitive   = true
+}
+
 output "deployment_summary" {
   value = {
     frontend_url       = module.static_web_app.default_url

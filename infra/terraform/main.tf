@@ -182,7 +182,8 @@ module "container_apps" {
 
 # ============================================================
 # GITHUB ACTIONS SECRETS
-# Single terraform apply keeps Key Vault AND GitHub Secrets in sync
+# Terraform manages all GitHub Actions secrets automatically.
+# Ensure the PAT has "Actions: Read and write" (fine-grained) scope.
 # ============================================================
 resource "github_actions_secret" "azure_resource_group" {
   repository  = var.github_repository
