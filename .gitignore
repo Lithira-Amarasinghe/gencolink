@@ -1,3 +1,12 @@
 # Azure Functions — never commit real secrets
 functions/local.settings.json
 functions/node_modules/
+
+# Terraform — state and vars contain secrets/credentials
+infra/terraform/**/.terraform/
+infra/terraform/**/*.tfstate
+infra/terraform/**/*.tfstate.*
+infra/terraform/**/terraform.tfvars
+infra/terraform/**/*.tfplan
+infra/terraform/**/tfplan
+infra/terraform/**/outputs.json

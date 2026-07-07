@@ -1,0 +1,50 @@
+# Rename this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to Git - it contains secrets
+
+# Use your existing resource group
+resource_group_name = "gencolink"
+
+project_name = "gencolink"
+environment  = "prod"
+location     = "eastus2"
+location_short = "eus2"
+
+# GitHub integration (for Static Web App)
+github_repo_token = "YOUR_GITHUB_PAT_HERE"  # Create at https://github.com/settings/tokens
+github_repo_url   = "https://github.com/yourname/gencolink"
+github_branch     = "main"
+
+# PostgreSQL
+db_admin_username = "pgadmin"
+db_admin_password = "STRONG_PASSWORD_HERE_MIN_8_CHARS"
+db_sku            = "B_Standard_B1ms"  # Low-cost burstable tier
+db_storage_gb     = 32                  # 32GB is minimum for flexible server
+db_version        = "15"
+
+# Directus configuration
+directus_image              = "directus/directus:latest"  # Update after building your image
+directus_admin_email        = "admin@gencolink.com"
+directus_admin_password     = "STRONG_ADMIN_PASSWORD_HERE"
+directus_admin_token        = "GENERATE_STRONG_TOKEN_HERE"
+directus_jwt_secret         = "GENERATE_STRONG_JWT_SECRET_HERE"
+directus_refresh_token_ttl  = 7
+
+# Azure Communication Email
+azure_communication_email_domain = "https://YOUR_RESOURCE.communication.azure.com/"
+from_email_address              = "noreply@gencolink.com"
+contact_recipient_email         = "contact@gencolink.com"
+
+# Container Registry
+enable_acr = true
+acr_sku    = "Basic"
+
+# Monitoring
+enable_app_insights = true
+
+# Tags
+tags = {
+  Project     = "Gencolink"
+  Environment = "Production"
+  ManagedBy   = "Terraform"
+  Owner       = "Your Name"
+}

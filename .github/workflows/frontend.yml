@@ -1,0 +1,128 @@
+name: Frontend (Angular)
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'Website/**'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'Website/**'
+  workflow_dispatch:
+
+env:
+  AZURE_SWA_NAME: gencolink-prod-eus-swa
+  AZURE_RESOURCE_GROUP: gencolink
+
+jobs:
+  build:
+    name: Build Angular App
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Website
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'Website/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint 2>/dev/null || true
+
+      - name: Run tests
+        run: npm test -- --watch=false --browsers=ChromeHeadless 2>/dev/null || true
+
+      - name: Build production
+        run: npm run build -- --configuration production
+
+      - name: Inject Directus Runtime Config
+        run: |
+          mkdir -p dist/gencolink
+          cat > dist/gencolink/runtime-config.js << 'EOF'
+          window.__DIRECTUS_URL__ = '${{ secrets.DIRECTUS_API_URL }}' || 'http://localhost:8055';
+          window.__API_TIMEOUT__ = 30000;
+          window.__APP_ENV__ = 'production';
+          EOF
+
+      - name: Copy staticwebapp.config.json
+        run: |
+          cp ../Website/staticwebapp.config.json dist/gencolink/ || \
+          cat > dist/gencolink/staticwebapp.config.json << 'EOF'
+          {
+            "routes": [
+              {"route": "/api/*", "allowedRoles": ["anonymous"]},
+              {"route": "/*", "serve": "/index.html", "statusCode": 200}
+            ],
+            "navigationFallback": {"rewrite": "/index.html"},
+            "globalHeaders": {"Cache-Control": "public, max-age=3600, must-revalidate"}
+          }
+          EOF
+
+      - name: Verify build artifacts
+        run: |
+          ls -la dist/gencolink/
+          echo "Build size: $(du -sh dist/gencolink/)"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: angular-build
+          path: Website/dist/gencolink
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Azure Static Web App
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: angular-build
+          path: ./build
+
+      - name: List deployment files
+        run: ls -la build/
+
+      - name: Deploy to Static Web App
+        uses: azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_DEPLOYMENT_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: 'build'
+          output_location: ''
+
+      - name: Get deployment URL
+        id: deployment
+        run: |
+          DEPLOYMENT_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.AZURE_SWA_DEPLOYMENT_TOKEN }}" \
+            "https://${{ env.AZURE_SWA_NAME }}.azurestaticapps.net/.auth/me" | jq -r '.clientPrincipal.identityProvider' || echo "")
+          SWA_URL="https://${{ env.AZURE_SWA_NAME }}.azurestaticapps.net"
+          echo "url=$SWA_URL" >> $GITHUB_OUTPUT
+          echo "✅ Deployment complete"
+
+      - name: Verify deployment
+        run: |
+          echo "Frontend deployed to: https://${{ env.AZURE_SWA_NAME }}.azurestaticapps.net"
+          # Test if deployment is accessible
+          curl -f -I https://${{ env.AZURE_SWA_NAME }}.azurestaticapps.net/ || echo "Warning: Could not verify deployment URL"

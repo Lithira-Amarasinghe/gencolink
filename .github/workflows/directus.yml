@@ -1,0 +1,78 @@
+name: Directus (Container Apps)
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'Directus/**'
+      - '.github/workflows/directus.yml'
+  workflow_dispatch:
+
+env:
+  DIRECTUS_CONTAINER_APP_NAME: ${{ secrets.DIRECTUS_CONTAINER_APP_NAME }}
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+
+jobs:
+  deploy:
+    name: Restart Container App (pull latest image + apply Directus schema)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Directus is pulled straight from Docker Hub (directus/directus:latest) —
+      # no private registry, so "deploy" just forces a new revision to re-pull
+      # the image and pick up any env/config changes applied via Terraform.
+      - name: Restart Container App revision
+        run: |
+          az containerapp revision restart \
+            --name ${{ env.DIRECTUS_CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --revision $(az containerapp revision list \
+              --name ${{ env.DIRECTUS_CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query '[0].name' -o tsv)
+
+      - name: Wait for deployment
+        run: |
+          for i in {1..30}; do
+            STATUS=$(az containerapp show -n ${{ env.DIRECTUS_CONTAINER_APP_NAME }} -g ${{ env.AZURE_RESOURCE_GROUP }} --query 'properties.provisioningState' -o tsv)
+            if [ "$STATUS" = "Succeeded" ]; then
+              echo "Deployment successful"
+              exit 0
+            fi
+            echo "Attempt $i/30: Status is $STATUS"
+            sleep 10
+          done
+          echo "Deployment timed out"
+          exit 1
+
+      - name: Get deployment URL
+        id: url
+        run: |
+          FQDN=$(az containerapp show -n ${{ env.DIRECTUS_CONTAINER_APP_NAME }} -g ${{ env.AZURE_RESOURCE_GROUP }} --query 'properties.configuration.ingress.fqdn' -o tsv)
+          echo "url=https://$FQDN" >> $GITHUB_OUTPUT
+
+      - name: Run health check
+        run: |
+          curl -f "${{ steps.url.outputs.url }}/server/health" || echo "Health check failed (may need time to start)"
+
+      - name: Run Directus schema setup
+        run: |
+          # One-time/idempotent collection bootstrap - see Directus/setup.js
+          az containerapp exec \
+            --name ${{ env.DIRECTUS_CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --command "node setup.js" || echo "Schema setup skipped/failed - check manually"

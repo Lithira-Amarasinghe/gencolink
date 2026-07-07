@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-pgadmin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: directus
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pgadmin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  directus:
+    build: .
+    ports:
+      - "8055:8055"
+    environment:
+      # Database
+      DB_CLIENT: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: directus
+      DB_USER: ${DB_USER:-pgadmin}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+
+      # Admin account
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@gencolink.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+
+      # Tokens & secrets
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-changeme}
+      JWT_SECRET: ${JWT_SECRET:-changeme}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL:-7d}
+
+      # Public URL (for webhooks and email links)
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8055}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8055/api}
+
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
+
+      # Extensions and uploads
+      EXTENSIONS_PATH: ./extensions
+      UPLOADS_DIRECTORY: ./uploads
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/directus/uploads
+      - ./extensions:/directus/extensions
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8055/server/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres_data:
