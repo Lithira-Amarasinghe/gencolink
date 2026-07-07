@@ -49,28 +49,19 @@ jobs:
       - name: Build production
         run: npm run build -- --configuration production
 
-      - name: Inject Directus Runtime Config
+      - name: Inject Directus Runtime Config to browser dir
         run: |
-          mkdir -p dist/gencolink
-          cat > dist/gencolink/runtime-config.js << 'EOF'
+          mkdir -p dist/gencolink/browser
+          cat > dist/gencolink/browser/runtime-config.js << 'EOF'
           window.__DIRECTUS_URL__ = '${{ secrets.DIRECTUS_API_URL }}' || 'http://localhost:8055';
           window.__API_TIMEOUT__ = 30000;
           window.__APP_ENV__ = 'production';
           EOF
 
-      - name: Copy staticwebapp.config.json
+      - name: Copy staticwebapp.config.json to browser dir
         run: |
-          cp ../Website/staticwebapp.config.json dist/gencolink/ || \
-          cat > dist/gencolink/staticwebapp.config.json << 'EOF'
-          {
-            "routes": [
-              {"route": "/api/*", "allowedRoles": ["anonymous"]},
-              {"route": "/*", "serve": "/index.html", "statusCode": 200}
-            ],
-            "navigationFallback": {"rewrite": "/index.html"},
-            "globalHeaders": {"Cache-Control": "public, max-age=3600, must-revalidate"}
-          }
-          EOF
+          mkdir -p dist/gencolink/browser
+          cp staticwebapp.config.json dist/gencolink/browser/
 
       - name: Verify build artifacts
         run: |
@@ -111,19 +102,24 @@ jobs:
       - name: Flatten artifact to build directory
         run: |
           mkdir -p build
-          # Extract from the subdirectory if it exists
-          if [ -d "./build-temp/Website/dist/gencolink" ]; then
-            cp -r ./build-temp/Website/dist/gencolink/* ./build/
-          else
-            cp -r ./build-temp/* ./build/
-          fi
+          # Extract from Website/dist/gencolink (artifact preserves full path)
+          cp -r ./build-temp/Website/dist/gencolink/* ./build/
           rm -rf ./build-temp
+
+          # Verify structure
+          echo "=== Deployed structure ==="
+          find build/ -type f | head -15
 
       - name: List deployment files
         run: |
           echo "=== Final build directory ==="
           ls -la build/
-          ls -la build/ | grep -i index
+          echo ""
+          echo "=== Checking for index.html ==="
+          find build/ -name "index.html" -type f || echo "index.html not found"
+          echo ""
+          echo "=== Browser directory contents ==="
+          ls -la build/browser/ 2>/dev/null | head -10 || echo "No browser directory"
 
       - name: Deploy to Static Web App
         uses: azure/static-web-apps-deploy@v1
