@@ -11,11 +11,7 @@
     }
   ],
   "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/api/*", "/images/*", "/*.css", "/*.js", "/*.json"]
-  },
-  "responseOverrides": {
-    "404": "/index.html"
+    "rewrite": "/index.html"
   },
   "globalHeaders": {
     "Cache-Control": "public, max-age=3600, must-revalidate",
@@ -27,17 +23,5 @@
     ".woff": "font/woff",
     ".woff2": "font/woff2",
     ".ttf": "font/ttf"
-  },
-  "auth": {
-    "rolesSource": "/auth/me",
-    "identityProviders": {
-      "azureActiveDirectory": {
-        "registration": {
-          "openIdIssuer": "https://login.microsoftonline.com",
-          "clientIdSettingName": "AUTH_CLIENT_ID",
-          "clientSecretSettingName": "AUTH_CLIENT_SECRET"
-        }
-      }
-    }
   }
 }
