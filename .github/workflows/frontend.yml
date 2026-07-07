@@ -81,8 +81,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: angular-build
-          path: Website/dist/gencolink
+          path: Website/dist/gencolink/
           retention-days: 7
+
+      - name: Verify artifact contents before upload
+        run: ls -la dist/gencolink/ | head -20
 
   deploy:
     name: Deploy to Azure Static Web App
@@ -98,10 +101,29 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: angular-build
-          path: ./build
+          path: ./build-temp
+
+      - name: List downloaded artifact structure
+        run: |
+          echo "=== Contents of build-temp ==="
+          find ./build-temp -type f | head -20
+
+      - name: Flatten artifact to build directory
+        run: |
+          mkdir -p build
+          # Extract from the subdirectory if it exists
+          if [ -d "./build-temp/Website/dist/gencolink" ]; then
+            cp -r ./build-temp/Website/dist/gencolink/* ./build/
+          else
+            cp -r ./build-temp/* ./build/
+          fi
+          rm -rf ./build-temp
 
       - name: List deployment files
-        run: ls -la build/
+        run: |
+          echo "=== Final build directory ==="
+          ls -la build/
+          ls -la build/ | grep -i index
 
       - name: Deploy to Static Web App
         uses: azure/static-web-apps-deploy@v1
