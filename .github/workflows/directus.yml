@@ -65,14 +65,25 @@ jobs:
           FQDN=$(az containerapp show -n ${{ env.DIRECTUS_CONTAINER_APP_NAME }} -g ${{ env.AZURE_RESOURCE_GROUP }} --query 'properties.configuration.ingress.fqdn' -o tsv)
           echo "url=https://$FQDN" >> $GITHUB_OUTPUT
 
-      - name: Run health check
+      - name: Wait for Directus API Ready
         run: |
-          curl -f "${{ steps.url.outputs.url }}/server/health" || echo "Health check failed (may need time to start)"
+          echo "Waiting for Directus API to be fully ready..."
+          for i in {1..60}; do
+            if curl -sf "${{ steps.url.outputs.url }}/server/health" > /dev/null 2>&1; then
+              echo "✓ Directus API ready (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i/60: Waiting for Directus API..."
+            sleep 2
+          done
+          echo "❌ Directus API did not become ready in time"
+          exit 1
 
-      - name: Run Directus schema setup
+      - name: Run Directus Schema Setup
         run: |
-          # One-time/idempotent collection bootstrap - see Directus/setup.js
+          echo "Running schema bootstrap (collections, permissions, seed data)..."
           az containerapp exec \
             --name ${{ env.DIRECTUS_CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --command "node setup.js" || echo "Schema setup skipped/failed - check manually"
+            --command "node setup.js"
+          echo "✓ Schema setup complete"

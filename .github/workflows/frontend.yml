@@ -52,8 +52,10 @@ jobs:
       - name: Inject Directus Runtime Config to browser dir
         run: |
           mkdir -p dist/gencolink/browser
+          # Directus API URL injected from GitHub secrets (set by Terraform)
+          # Falls back to localhost only if explicitly needed for local dev
           cat > dist/gencolink/browser/runtime-config.js << 'EOF'
-          window.__DIRECTUS_URL__ = '${{ secrets.DIRECTUS_API_URL }}' || 'http://localhost:8055';
+          window.__DIRECTUS_URL__ = '${{ secrets.DIRECTUS_API_URL }}';
           window.__API_TIMEOUT__ = 30000;
           window.__APP_ENV__ = 'production';
           EOF

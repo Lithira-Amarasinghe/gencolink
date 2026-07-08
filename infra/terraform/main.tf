@@ -59,7 +59,7 @@ resource "azurerm_storage_container" "directus_uploads" {
 resource "azurerm_storage_share" "directus_database" {
   name               = "directus-database"
   storage_account_id = azurerm_storage_account.content.id
-  quota              = 5 # GB - SQLite file + WAL, plenty for a CMS this size
+  quota              = 2 # GB - SQLite file + WAL (adjusted for cost optimization)
 }
 
 # ============================================================

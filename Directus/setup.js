@@ -16,7 +16,12 @@
 
 const BASE = (process.env.DIRECTUS_URL ?? 'http://localhost:8055').replace(/\/$/, '');
 const EMAIL = process.env.ADMIN_EMAIL ?? 'admin@gencolink.com';
-const PASS = process.env.ADMIN_PASSWORD ?? 'GencoCMS2025!';
+const PASS = process.env.ADMIN_PASSWORD;
+
+// Fail fast in production if password not provided
+if (!PASS && !process.env.DIRECTUS_URL) {
+  throw new Error('ADMIN_PASSWORD environment variable is required');
+}
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 
