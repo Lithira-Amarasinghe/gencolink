@@ -19,8 +19,9 @@ variable "environment" {
 }
 
 variable "location_short" {
-  description = "Short location code"
+  description = "DEPRECATED: Short location code (no longer used in naming)"
   type        = string
+  default     = ""
 }
 
 variable "tags" {

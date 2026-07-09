@@ -1,10 +1,67 @@
 locals {
-  resource_suffix = "${var.project_name}-${var.environment}-${var.location_short}"
+  # Clean naming: NO location in resource names (location-independent design)
+  app_name = "${var.project_name}-${var.environment}"
 
+  # Resolve service-specific locations (with fallbacks to primary)
+  directus_location  = coalesce(var.directus_location, var.primary_location)
+  frontend_location  = coalesce(var.frontend_location, var.primary_location)
+  storage_location   = coalesce(var.storage_location, var.primary_location)
+  sql_location       = coalesce(var.sql_location, var.primary_location)
+  keyvault_location  = coalesce(var.keyvault_location, var.primary_location)
+
+  # Enterprise tagging strategy
   common_tags = merge(
     var.tags,
     {
-      CostOptimization = "FREE-Tier-Only"
+      ManagedBy   = "Terraform"
+      Environment = var.environment
+      Project     = var.project_name
+    }
+  )
+
+  # Service-specific tags (include location for visibility)
+  directus_tags = merge(
+    local.common_tags,
+    {
+      Service  = "CMS-Directus"
+      Location = local.directus_location
+      Tier     = "Critical"
+    }
+  )
+
+  storage_tags = merge(
+    local.common_tags,
+    {
+      Service  = "Storage"
+      Location = local.storage_location
+      Tier     = "Standard"
+    }
+  )
+
+  sql_tags = merge(
+    local.common_tags,
+    {
+      Service  = "Database-SQL"
+      Location = local.sql_location
+      Tier     = "Critical"
+    }
+  )
+
+  keyvault_tags = merge(
+    local.common_tags,
+    {
+      Service  = "Secrets"
+      Location = local.keyvault_location
+      Tier     = "Critical"
+    }
+  )
+
+  frontend_tags = merge(
+    local.common_tags,
+    {
+      Service  = "Frontend-Angular"
+      Location = local.frontend_location
+      Tier     = "Standard"
     }
   )
 }
@@ -33,19 +90,18 @@ resource "random_password" "directus_admin_token" {
 
 # ============================================================
 # STORAGE ACCOUNT: Directus uploads (blob) + SQLite database file (Azure Files)
-# Directus does not support Cosmos DB as a database backend (Knex-based, needs
-# a relational engine or SQLite) - SQLite on a persistent file share is the
-# lowest-cost option and matches the local docker-compose setup's simplicity.
+# Clean naming: location-independent
 # ============================================================
 resource "azurerm_storage_account" "content" {
-  name                       = replace("${local.resource_suffix}content", "-", "")
-  location                   = data.azurerm_resource_group.main.location
+  # Clean name: gencolink-prod-storage (location in tags, not name)
+  name                       = replace("${local.app_name}-storage", "-", "")
+  location                   = local.storage_location
   resource_group_name        = data.azurerm_resource_group.main.name
   account_tier               = "Standard"
   account_replication_type   = "LRS"
   https_traffic_only_enabled = true
   min_tls_version            = "TLS1_2"
-  tags                       = local.common_tags
+  tags                       = local.storage_tags
 }
 
 resource "azurerm_storage_container" "directus_uploads" {
@@ -54,12 +110,58 @@ resource "azurerm_storage_container" "directus_uploads" {
   container_access_type = "blob"
 }
 
-# Azure Files share mounted into the Container App for the SQLite data file -
-# survives container restarts/redeploys (local filesystem otherwise doesn't).
-resource "azurerm_storage_share" "directus_database" {
-  name               = "directus-database"
-  storage_account_id = azurerm_storage_account.content.id
-  quota              = 2 # GB - SQLite file + WAL (adjusted for cost optimization)
+# ============================================================
+# AZURE SQL SERVER: Production database
+# Clean naming: location-independent
+# ============================================================
+resource "random_password" "sql_admin_password" {
+  length  = 16
+  special = true
+}
+
+resource "azurerm_mssql_server" "directus" {
+  name                         = "${local.app_name}-sqlserver"
+  resource_group_name          = data.azurerm_resource_group.main.name
+  location                     = local.sql_location
+  version                      = "12.0"
+  administrator_login          = var.sql_admin_username
+  administrator_login_password = coalesce(var.sql_admin_password != "" ? var.sql_admin_password : null, random_password.sql_admin_password.result)
+  minimum_tls_version          = "1.2"
+  tags                         = local.sql_tags
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+resource "azurerm_mssql_database" "directus" {
+  name           = var.sql_database_name
+  server_id      = azurerm_mssql_server.directus.id
+  collation      = "SQL_Latin1_General_CP1_CI_AS"
+  license_type   = "BasePrice"
+  max_size_gb    = 2
+  sku_name       = "Basic"
+  tags           = local.sql_tags
+}
+
+# Allow Container Apps to access SQL Server
+resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
+  name             = "AllowAzureServices"
+  server_id        = azurerm_mssql_server.directus.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
+}
+
+# ============================================================
+# MANAGED IDENTITY: RBAC Role Assignments
+# ============================================================
+
+# Grant Container App Managed Identity permission to read from Storage Account
+# (no keys/passwords needed for Azure Blob Storage)
+resource "azurerm_role_assignment" "container_app_storage_blob_contributor" {
+  scope              = azurerm_storage_account.content.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id       = module.container_apps.principal_id
 }
 
 # ============================================================
@@ -69,11 +171,11 @@ module "key_vault" {
   source = "./modules/key-vault"
 
   resource_group_name = data.azurerm_resource_group.main.name
-  location            = var.location
+  location            = local.keyvault_location
   project_name        = var.project_name
   environment         = var.environment
-  location_short      = var.location_short
-  tags                = local.common_tags
+  location_short      = ""  # Deprecated: location-independent naming
+  tags                = local.keyvault_tags
 
   container_apps_principal_id = module.container_apps.principal_id
 }
@@ -102,11 +204,7 @@ resource "azurerm_key_vault_secret" "directus_jwt_secret" {
   key_vault_id = module.key_vault.vault_id
 }
 
-resource "azurerm_key_vault_secret" "storage_key" {
-  name         = "directus-storage-key"
-  value        = azurerm_storage_account.content.primary_access_key
-  key_vault_id = module.key_vault.vault_id
-}
+# Storage key and SQL password no longer stored (using Managed Identity instead)
 
 # ============================================================
 # STATIC WEB APP: Angular frontend
@@ -115,17 +213,15 @@ module "static_web_app" {
   source = "./modules/static-web-app"
 
   resource_group_name = data.azurerm_resource_group.main.name
-  # SWA managed Functions/staging only deploy to a limited region set
-  # (centralus, eastus2, westus2, westeurope, eastasia) - must match one of
-  # those explicitly, module's own default ("eastus") is not supported.
-  location          = var.location
+  # SWA supports: centralus, eastus2, westus2, westeurope, eastasia
+  location          = local.frontend_location
   project_name      = var.project_name
   environment       = var.environment
-  location_short    = var.location_short
+  location_short    = ""  # Deprecated: location-independent naming
   github_repo_token = var.github_repo_token
   github_repo_url   = var.github_repo_url
   github_branch     = var.github_branch
-  tags              = local.common_tags
+  tags              = local.frontend_tags
 }
 
 # ============================================================
@@ -135,31 +231,33 @@ module "container_apps" {
   source = "./modules/container-apps"
 
   resource_group_name = data.azurerm_resource_group.main.name
-  location            = var.location
+  location            = local.directus_location
   project_name        = var.project_name
   environment         = var.environment
-  location_short      = var.location_short
+  location_short      = ""  # Deprecated: location-independent naming
   directus_image      = var.directus_image
   enable_app_insights = var.enable_app_insights
-  tags                = local.common_tags
-
-  sqlite_storage_account_name = azurerm_storage_account.content.name
-  sqlite_file_share_name      = azurerm_storage_share.directus_database.name
+  tags                = local.directus_tags
 
   directus_config = {
-    DB_CLIENT   = "sqlite3"
-    DB_FILENAME = "/directus/database/data.db"
+    DB_CLIENT = "mssql"
+    DB_HOST   = azurerm_mssql_server.directus.fully_qualified_domain_name
+    DB_PORT   = "1433"
+    DB_NAME   = var.sql_database_name
+    DB_USER   = var.sql_admin_username
 
     ADMIN_EMAIL = var.directus_admin_email
 
     JWT_REFRESH_TOKEN_TTL = "${var.directus_refresh_token_ttl}d"
 
-    PUBLIC_URL  = "https://${local.resource_suffix}-directus.azurecontainerapps.io"
+    PUBLIC_URL  = "https://${local.app_name}-directus.azurecontainerapps.io"
     CORS_ORIGIN = "https://${module.static_web_app.default_host_name}"
 
+    # Storage: Using Managed Identity (no key needed)
     STORAGE_LOCATIONS       = "azure"
     STORAGE_AZURE_ACCOUNT   = azurerm_storage_account.content.name
     STORAGE_AZURE_CONTAINER = azurerm_storage_container.directus_uploads.name
+    # Directus will use DefaultAzureCredential which includes Managed Identity
 
     RATE_LIMITER_ENABLED = "true"
     RATE_LIMITER_STORE   = "memory"
@@ -171,13 +269,14 @@ module "container_apps" {
   # Sensitive values -> Container App "secret" blocks, referenced via secretRef
   # (never rendered as plain env values in the portal/revision diff)
   directus_secrets = {
-    ADMIN_PASSWORD    = random_password.directus_admin_password.result
-    ADMIN_TOKEN       = random_password.directus_admin_token.result
-    JWT_SECRET        = random_password.directus_jwt_secret.result
+    ADMIN_PASSWORD = random_password.directus_admin_password.result
+    ADMIN_TOKEN    = random_password.directus_admin_token.result
+    JWT_SECRET     = random_password.directus_jwt_secret.result
+    DB_PASSWORD    = azurerm_mssql_server.directus.administrator_login_password
     STORAGE_AZURE_KEY = azurerm_storage_account.content.primary_access_key
   }
 
-  sqlite_storage_account_key = azurerm_storage_account.content.primary_access_key
+  depends_on = [azurerm_mssql_database.directus]
 }
 
 # ============================================================

@@ -1,5 +1,6 @@
 locals {
-  resource_suffix = "${var.project_name}-${var.environment}-${var.location_short}"
+  # Clean naming: location-independent (no location in name)
+  app_name = "${var.project_name}-${var.environment}"
 }
 
 resource "azurerm_key_vault" "main" {

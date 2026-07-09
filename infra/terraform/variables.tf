@@ -16,16 +16,46 @@ variable "environment" {
   default     = "prod"
 }
 
-variable "location" {
-  description = "Azure region"
+# ============================================================
+# PRIMARY LOCATION (for most services)
+# ============================================================
+variable "primary_location" {
+  description = "Primary Azure region for most resources"
   type        = string
   default     = "eastus2"
 }
 
-variable "location_short" {
-  description = "Short location code"
+# ============================================================
+# SERVICE-SPECIFIC LOCATIONS (overrides primary if set)
+# ============================================================
+variable "directus_location" {
+  description = "Location for Directus Container Apps (CMS workload)"
   type        = string
-  default     = "eus"
+  default     = null  # Falls back to primary_location
+}
+
+variable "frontend_location" {
+  description = "Location for Static Web App (limited regions: centralus, eastus2, westus2, westeurope, eastasia)"
+  type        = string
+  default     = null  # Falls back to primary_location
+}
+
+variable "storage_location" {
+  description = "Location for Storage Account (can be different for cost optimization)"
+  type        = string
+  default     = null  # Falls back to primary_location
+}
+
+variable "sql_location" {
+  description = "Location for Azure SQL Server"
+  type        = string
+  default     = null  # Falls back to primary_location
+}
+
+variable "keyvault_location" {
+  description = "Location for Key Vault"
+  type        = string
+  default     = null  # Falls back to primary_location
 }
 
 variable "tags" {
@@ -172,6 +202,51 @@ variable "sendgrid_api_key" {
   description = "SendGrid API key"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+# ============================================================
+# AZURE SQL SERVER CONFIGURATION
+# ============================================================
+variable "sql_admin_username" {
+  description = "SQL Server admin username"
+  type        = string
+  default     = "sqladmin"
+}
+
+variable "sql_admin_password" {
+  description = "SQL Server admin password"
+  type        = string
+  sensitive   = true
+}
+
+variable "sql_service_tier" {
+  description = "SQL Database service tier (Basic, Standard, Premium)"
+  type        = string
+  default     = "Basic"
+}
+
+variable "sql_compute_model" {
+  description = "SQL Database compute model (DTU or vCore)"
+  type        = string
+  default     = "DTU"
+}
+
+variable "sql_database_name" {
+  description = "Azure SQL Database name"
+  type        = string
+  default     = "directus"
+}
+
+variable "sql_entra_admin_name" {
+  description = "Entra ID admin user/group name for SQL Server (e.g., your Azure user principal name)"
+  type        = string
+  default     = "admin@example.com"
+}
+
+variable "sql_entra_admin_object_id" {
+  description = "Entra ID admin object ID (get from: az ad user show --id your-email --query id)"
+  type        = string
   default     = ""
 }
 

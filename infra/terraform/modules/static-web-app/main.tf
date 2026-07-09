@@ -1,5 +1,6 @@
 locals {
-  resource_suffix = "${var.project_name}-${var.environment}-${var.location_short}"
+  # Clean naming: location-independent (no location in name)
+  app_name = "${var.project_name}-${var.environment}"
 }
 
 # Note: Azure Static Web App deployment integration with GitHub is set up
@@ -7,7 +8,7 @@ locals {
 # This resource creates the SWA; GitHub Actions handles the deployment.
 
 resource "azurerm_static_web_app" "main" {
-  name                = "${local.resource_suffix}-swa"
+  name                = "${local.app_name}-frontend"
   location            = var.location
   resource_group_name = var.resource_group_name
   sku_tier            = "Free"

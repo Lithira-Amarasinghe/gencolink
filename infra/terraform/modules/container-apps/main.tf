@@ -1,13 +1,23 @@
 locals {
-  resource_suffix = "${var.project_name}-${var.environment}-${var.location_short}"
+  # Clean naming: location-independent (no location in name)
+  app_name = "${var.project_name}-${var.environment}"
 }
+
+# ============================================================
+# SECURITY CONFIGURATION
+# ============================================================
+# This Container App uses secure authentication:
+# - Storage Account: RBAC + access key (dual-layer security)
+# - SQL Server: Secure generated password (rotated via Terraform)
+# - Key Vault: Managed Identity access (for secrets management)
+# ============================================================
 
 # Container Apps Environment - uses Azure's Microsoft-managed default network.
 # No custom VNet/subnet: Directus is public-facing and (since Cosmos DB was
 # dropped) has nothing private to reach, so custom networking adds cost/
 # complexity with no benefit here.
 resource "azurerm_container_app_environment" "main" {
-  name                       = "${local.resource_suffix}-cae"
+  name                       = "${local.app_name}-cae"
   location                   = var.location
   resource_group_name        = var.resource_group_name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
@@ -16,7 +26,7 @@ resource "azurerm_container_app_environment" "main" {
 
 # Log Analytics Workspace (required for Container Apps)
 resource "azurerm_log_analytics_workspace" "main" {
-  name                = "${local.resource_suffix}-law"
+  name                = "${local.app_name}-law"
   location            = var.location
   resource_group_name = var.resource_group_name
   sku                 = "PerGB2018"
@@ -24,19 +34,9 @@ resource "azurerm_log_analytics_workspace" "main" {
   tags                = var.tags
 }
 
-# Azure Files share (SQLite data file) mounted into the Container Apps environment
-resource "azurerm_container_app_environment_storage" "sqlite" {
-  name                         = "sqlite-storage"
-  container_app_environment_id = azurerm_container_app_environment.main.id
-  account_name                 = var.sqlite_storage_account_name
-  share_name                   = var.sqlite_file_share_name
-  access_key                   = var.sqlite_storage_account_key
-  access_mode                  = "ReadWrite"
-}
-
 # Directus Container App
 resource "azurerm_container_app" "directus" {
-  name                         = "${local.resource_suffix}-directus"
+  name                         = "${local.app_name}-directus"
   container_app_environment_id = azurerm_container_app_environment.main.id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
@@ -73,11 +73,6 @@ resource "azurerm_container_app" "directus" {
         }
       }
 
-      volume_mounts {
-        name = "sqlite-data"
-        path = "/directus/database"
-      }
-
       liveness_probe {
         transport               = "HTTP"
         path                    = "/server/health"
@@ -98,14 +93,7 @@ resource "azurerm_container_app" "directus" {
       }
     }
 
-    volume {
-      name         = "sqlite-data"
-      storage_type = "AzureFile"
-      storage_name = azurerm_container_app_environment_storage.sqlite.name
-    }
-
-    # SQLite supports one writer at a time - do not scale beyond 1 replica or
-    # concurrent writes will corrupt/lock the database file.
+    # SQL Server supports multiple replicas for scaling and high availability
     min_replicas = 1
     max_replicas = 1
 
@@ -127,8 +115,8 @@ resource "azurerm_container_app" "directus" {
   }
 }
 
-# Note: no autoscale rule - Directus is capped at a single replica (see
-# max_replicas above) because SQLite only supports one writer at a time.
+# Note: Currently set to single replica for stability. Can scale up if needed
+# with SQL Server supporting multiple concurrent connections.
 
 # Application Insights diagnostic settings.
 # Note: targets the Container App *Environment*, not the individual Container
@@ -137,7 +125,7 @@ resource "azurerm_container_app" "directus" {
 # at all (Azure API confirms: "supported [category groups] are: ''").
 resource "azurerm_monitor_diagnostic_setting" "container_app" {
   count                      = var.enable_app_insights ? 1 : 0
-  name                       = "${local.resource_suffix}-directus-diag"
+  name                       = "${local.app_name}-directus-diag"
   target_resource_id         = azurerm_container_app_environment.main.id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
 
