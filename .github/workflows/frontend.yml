@@ -15,8 +15,8 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_SWA_NAME: gencolink-prod-eus-swa
-  AZURE_RESOURCE_GROUP: gencolink
+  AZURE_SWA_NAME: ${{ secrets.AZURE_SWA_NAME }}
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
 
 jobs:
   build:
