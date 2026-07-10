@@ -79,11 +79,7 @@ jobs:
           echo "❌ Directus API did not become ready in time"
           exit 1
 
-      - name: Run Directus Schema Setup
+      - name: Verify Directus is Ready
         run: |
-          echo "Running schema bootstrap (collections, permissions, seed data)..."
-          az containerapp exec \
-            --name ${{ env.DIRECTUS_CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --command "node setup.js"
-          echo "✓ Schema setup complete"
+          echo "✓ Directus deployment complete"
+          echo "Admin URL: https://${{ env.DIRECTUS_CONTAINER_APP_NAME }}.azurecontainerapps.io/admin"
