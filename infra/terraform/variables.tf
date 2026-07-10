@@ -198,6 +198,21 @@ variable "azure_communication_email_domain" {
   default     = ""
 }
 
+# ============================================================
+# APP SERVICE DEPLOYMENT (Alternative to Container Apps)
+# ============================================================
+variable "enable_app_service" {
+  description = "Deploy Directus to App Service (set to false to keep Container Apps only)"
+  type        = bool
+  default     = true
+}
+
+variable "app_service_sku" {
+  description = "App Service Plan SKU (F1=free, B1=basic ~$13/mo)"
+  type        = string
+  default     = "F1"
+}
+
 variable "sendgrid_api_key" {
   description = "SendGrid API key"
   type        = string

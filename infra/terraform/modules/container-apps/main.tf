@@ -93,8 +93,10 @@ resource "azurerm_container_app" "directus" {
       }
     }
 
-    # SQL Server supports multiple replicas for scaling and high availability
-    min_replicas = 1
+    # Scale-to-zero: min_replicas = 0 eliminates idle costs
+    # max_replicas = 1 for production stability (single instance)
+    # Cold start: ~10-15s when scaling from 0
+    min_replicas = 0
     max_replicas = 1
 
     revision_suffix = formatdate("YYYY-MM-DD-hhmm", timestamp())
@@ -115,8 +117,9 @@ resource "azurerm_container_app" "directus" {
   }
 }
 
-# Note: Currently set to single replica for stability. Can scale up if needed
-# with SQL Server supporting multiple concurrent connections.
+# Autoscaling: KEDA monitors HTTP traffic
+# No traffic → scales to 0 instances ($0/hour)
+# Traffic arrives → scales to 1 instance (~10-15s cold start)
 
 # Application Insights diagnostic settings.
 # Note: targets the Container App *Environment*, not the individual Container

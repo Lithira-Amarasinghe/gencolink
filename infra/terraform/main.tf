@@ -88,6 +88,11 @@ resource "random_password" "directus_admin_token" {
   special = false
 }
 
+resource "random_password" "directus_secret" {
+  length  = 32
+  special = false
+}
+
 # ============================================================
 # STORAGE ACCOUNT: Directus uploads (blob) + SQLite database file (Azure Files)
 # Clean naming: location-independent
@@ -240,11 +245,13 @@ module "container_apps" {
   tags                = local.directus_tags
 
   directus_config = {
-    DB_CLIENT = "mssql"
-    DB_HOST   = azurerm_mssql_server.directus.fully_qualified_domain_name
-    DB_PORT   = "1433"
-    DB_NAME   = var.sql_database_name
-    DB_USER   = var.sql_admin_username
+    DB_CLIENT                   = "mssql"
+    DB_HOST                     = azurerm_mssql_server.directus.fully_qualified_domain_name
+    DB_PORT                     = "1433"
+    DB_DATABASE                 = var.sql_database_name
+    DB_USER                     = var.sql_admin_username
+    DB_ENCRYPT                  = "true"
+    DB_TRUST_SERVER_CERTIFICATE = "false"
 
     ADMIN_EMAIL = var.directus_admin_email
 
@@ -252,12 +259,6 @@ module "container_apps" {
 
     PUBLIC_URL  = "https://${local.app_name}-directus.azurecontainerapps.io"
     CORS_ORIGIN = "https://${module.static_web_app.default_host_name}"
-
-    # Storage: Using Managed Identity (no key needed)
-    STORAGE_LOCATIONS       = "azure"
-    STORAGE_AZURE_ACCOUNT   = azurerm_storage_account.content.name
-    STORAGE_AZURE_CONTAINER = azurerm_storage_container.directus_uploads.name
-    # Directus will use DefaultAzureCredential which includes Managed Identity
 
     RATE_LIMITER_ENABLED = "true"
     RATE_LIMITER_STORE   = "memory"
@@ -272,12 +273,96 @@ module "container_apps" {
     ADMIN_PASSWORD = random_password.directus_admin_password.result
     ADMIN_TOKEN    = random_password.directus_admin_token.result
     JWT_SECRET     = random_password.directus_jwt_secret.result
+    SECRET         = random_password.directus_secret.result
     DB_PASSWORD    = azurerm_mssql_server.directus.administrator_login_password
     STORAGE_AZURE_KEY = azurerm_storage_account.content.primary_access_key
   }
 
   depends_on = [azurerm_mssql_database.directus]
 }
+
+# ============================================================
+# APP SERVICE: Directus on Free Tier (F1)
+# Alternative to Container Apps - reuses same DB/Storage/KeyVault
+# ============================================================
+module "app_service" {
+  count  = var.enable_app_service ? 1 : 0
+  source = "./modules/app-service"
+
+  resource_group_name = data.azurerm_resource_group.main.name
+  location            = local.frontend_location  # Use same as frontend
+  project_name        = var.project_name
+  environment         = var.environment
+  sku                 = var.app_service_sku
+
+  # Key Vault integration
+  key_vault_id  = module.key_vault.vault_id
+  key_vault_uri = module.key_vault.vault_uri
+
+  # Storage for uploads (same as Container Apps)
+  storage_account_id = azurerm_storage_account.content.id
+
+  # Configuration (same as Container Apps) - defined in main.tf module.container_apps call
+  directus_config = {
+    DB_CLIENT                   = "mssql"
+    DB_HOST                     = azurerm_mssql_server.directus.fully_qualified_domain_name
+    DB_PORT                     = "1433"
+    DB_DATABASE                 = var.sql_database_name
+    DB_USER                     = var.sql_admin_username
+    DB_ENCRYPT                  = "true"
+    DB_TRUST_SERVER_CERTIFICATE = "false"
+    ADMIN_EMAIL                 = var.directus_admin_email
+    JWT_REFRESH_TOKEN_TTL       = "${var.directus_refresh_token_ttl}d"
+    PUBLIC_URL                  = "https://${local.app_name}-appservice.azurewebsites.net"
+    CORS_ORIGIN                 = "https://${module.static_web_app.default_host_name}"
+    RATE_LIMITER_ENABLED        = "true"
+    RATE_LIMITER_STORE          = "memory"
+    CACHE_ENABLED               = "true"
+    CACHE_STORE                 = "memory"
+    LOG_LEVEL                   = "info"
+  }
+
+  # Sensitive values
+  directus_secrets = {
+    ADMIN_PASSWORD    = random_password.directus_admin_password.result
+    ADMIN_TOKEN       = random_password.directus_admin_token.result
+    JWT_SECRET        = random_password.directus_jwt_secret.result
+    SECRET            = random_password.directus_secret.result
+    DB_PASSWORD       = azurerm_mssql_server.directus.administrator_login_password
+    STORAGE_AZURE_KEY = azurerm_storage_account.content.primary_access_key
+  }
+
+  tags       = local.directus_tags
+  depends_on = [azurerm_mssql_database.directus, module.key_vault]
+}
+
+# ============================================================
+# APP SERVICE SECURITY: Key Vault Access
+# ============================================================
+resource "azurerm_key_vault_access_policy" "app_service" {
+  count            = var.enable_app_service ? 1 : 0
+  key_vault_id     = module.key_vault.vault_id
+  object_id        = module.app_service[0].principal_id
+  tenant_id        = data.azurerm_client_config.current.tenant_id
+  secret_permissions = ["Get", "List"]
+
+  depends_on = [module.app_service]
+}
+
+# ============================================================
+# APP SERVICE SECURITY: RBAC Role Assignment
+# ============================================================
+resource "azurerm_role_assignment" "app_service_storage_blob_contributor" {
+  count              = var.enable_app_service ? 1 : 0
+  scope              = azurerm_storage_account.content.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id       = module.app_service[0].principal_id
+
+  depends_on = [module.app_service]
+}
+
+# Get current Azure context
+data "azurerm_client_config" "current" {}
 
 # ============================================================
 # GITHUB ACTIONS SECRETS
@@ -318,4 +403,19 @@ resource "github_actions_secret" "directus_container_app_name" {
   repository  = var.github_repository
   secret_name = "DIRECTUS_CONTAINER_APP_NAME"
   value       = module.container_apps.app_name
+}
+
+# App Service deployment secrets
+resource "github_actions_secret" "azure_appservice_name" {
+  count           = var.enable_app_service ? 1 : 0
+  repository      = var.github_repository
+  secret_name     = "AZURE_APPSERVICE_NAME"
+  value           = module.app_service[0].app_service_name
+}
+
+resource "github_actions_secret" "azure_appservice_url" {
+  count           = var.enable_app_service ? 1 : 0
+  repository      = var.github_repository
+  secret_name     = "AZURE_APPSERVICE_URL"
+  value           = module.app_service[0].app_service_url
 }

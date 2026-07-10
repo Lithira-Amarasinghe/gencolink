@@ -76,3 +76,27 @@ output "deployment_summary" {
     secrets_synced_to  = ["Azure Key Vault", "GitHub Actions Secrets"]
   }
 }
+
+output "app_service_url" {
+  description = "App Service Directus URL (Free tier F1 - 60 min/day limit)"
+  value       = var.enable_app_service ? "https://${module.app_service[0].app_service_fqdn}" : "App Service disabled (set enable_app_service = true)"
+}
+
+output "app_service_admin_url" {
+  description = "App Service Directus admin panel URL"
+  value       = var.enable_app_service ? "${module.app_service[0].app_service_url}/admin" : "App Service disabled"
+}
+
+output "app_service_status" {
+  description = "App Service deployment status and warnings"
+  value = var.enable_app_service ? {
+    status              = "Deployed"
+    sku                 = var.app_service_sku
+    daily_compute_limit = "60 minutes (Free tier F1)"
+    warning             = "Free tier only viable for testing/demo (not 24/7 production)"
+    endpoint            = "https://${module.app_service[0].app_service_fqdn}"
+  } : {
+    status  = "Disabled"
+    message = "Set enable_app_service = true to enable"
+  }
+}
