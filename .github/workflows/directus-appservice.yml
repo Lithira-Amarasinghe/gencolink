@@ -1,4 +1,4 @@
-name: Directus (App Service)
+name: Directus (App Service - Docker)
 
 on:
   push:
@@ -15,16 +15,13 @@ env:
 
 jobs:
   deploy:
-    name: Deploy Directus to App Service
+    name: Restart App Service (Pull Latest Directus Image)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Azure Login (OIDC)
         uses: azure/login@v1
         with:
@@ -32,24 +29,21 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Prepare deployment package
+      - name: Restart App Service (pulls latest Docker image)
         run: |
-          cd Directus
-          # Copy setup.js and package.json for App Service startup
-          ls -la setup.js package.json
-          echo "✓ Files ready for deployment"
-
-      - name: Deploy to App Service
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ env.AZURE_APPSERVICE_NAME }}
-          package: Directus/
+          az webapp restart \
+            --name ${{ env.AZURE_APPSERVICE_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
+          echo "✓ App Service restarted - pulling latest Directus image"
 
       - name: Wait for App Service startup
         run: |
           echo "Waiting for App Service to start..."
           for i in {1..60}; do
-            STATUS=$(az webapp show -n ${{ env.AZURE_APPSERVICE_NAME }} -g ${{ env.AZURE_RESOURCE_GROUP }} --query 'state' -o tsv)
+            STATUS=$(az webapp show \
+              -n ${{ env.AZURE_APPSERVICE_NAME }} \
+              -g ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query 'state' -o tsv)
             if [ "$STATUS" = "Running" ]; then
               echo "✓ App Service is running (attempt $i)"
               break
