@@ -41,6 +41,9 @@ resource "azurerm_linux_web_app" "main" {
       node_version = "20-lts"
     }
 
+    # Always-on only for paid tiers (not F1 free)
+    always_on = var.sku != "F1" ? true : false
+
     # Health check configuration
     health_check_path              = "/server/health"
     health_check_eviction_time_in_min = 2  # Minimum value required by Azure

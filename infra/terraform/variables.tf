@@ -40,6 +40,12 @@ variable "frontend_location" {
   default     = null  # Falls back to primary_location
 }
 
+variable "app_service_location" {
+  description = "Location for App Service Plan + Web App (can be any region)"
+  type        = string
+  default     = null  # Falls back to primary_location
+}
+
 variable "storage_location" {
   description = "Location for Storage Account (can be different for cost optimization)"
   type        = string

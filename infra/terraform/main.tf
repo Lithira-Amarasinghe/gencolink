@@ -290,7 +290,7 @@ module "app_service" {
   source = "./modules/app-service"
 
   resource_group_name = data.azurerm_resource_group.main.name
-  location            = local.frontend_location  # Use same as frontend
+  location            = coalesce(var.app_service_location, var.primary_location)  # App Service specific location
   project_name        = var.project_name
   environment         = var.environment
   sku                 = var.app_service_sku
