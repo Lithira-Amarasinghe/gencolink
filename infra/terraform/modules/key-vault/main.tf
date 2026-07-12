@@ -11,46 +11,38 @@ resource "azurerm_key_vault" "main" {
   sku_name                   = "standard"
   soft_delete_retention_days = 7
   purge_protection_enabled   = false # Can be true for prod after initial setup
-  rbac_authorization_enabled = false
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azurerm_client_config.current.object_id
 
-    secret_permissions = [
-      "Get",
-      "List",
-      "Set",
-      "Delete",
-      "Purge",
-      "Recover",
-      "Backup",
-      "Restore"
-    ]
-  }
+  # Azure RBAC authorization (Microsoft-recommended over legacy access
+  # policies). Access policies proved unreliable here: App Service Key Vault
+  # references returned persistent AccessToKeyVaultDenied despite a correct
+  # policy, and policies kept getting clobbered by unrelated applies.
+  rbac_authorization_enabled = true
 
   tags = var.tags
 }
 
-# Allow Azure Functions to read secrets (if principal_id provided)
-resource "azurerm_key_vault_access_policy" "functions" {
-  count              = var.functions_principal_id != null ? 1 : 0
-  key_vault_id       = azurerm_key_vault.main.id
-  tenant_id          = data.azurerm_client_config.current.tenant_id
-  object_id          = var.functions_principal_id
-  secret_permissions = ["Get", "List"]
+# Deployer (Terraform runner) manages secret contents
+resource "azurerm_role_assignment" "deployer_secrets_officer" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Administrator"
+  principal_id         = data.azurerm_client_config.current.object_id
 }
 
-# Allow Container Apps to read secrets. No count/conditional here on purpose:
-# the caller always passes a real principal_id (Container App's managed
-# identity), and that value is only known after the Container App is created
-# - using count on an unknown value errors at plan time ("Invalid count
-# argument"). An unconditional resource lets Terraform defer this to after
-# the Container App exists, which is a normal dependency, not a cycle.
-resource "azurerm_key_vault_access_policy" "container_apps" {
-  key_vault_id       = azurerm_key_vault.main.id
-  tenant_id          = data.azurerm_client_config.current.tenant_id
-  object_id          = var.container_apps_principal_id
-  secret_permissions = ["Get", "List"]
+# Container Apps managed identity reads secrets.
+# No count/conditional on purpose: principal_id is only known after the
+# Container App exists - count on an unknown value errors at plan time.
+resource "azurerm_role_assignment" "container_apps_secrets_user" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = var.container_apps_principal_id
+}
+
+# Azure Functions managed identity reads secrets (if provided)
+resource "azurerm_role_assignment" "functions_secrets_user" {
+  count                = var.functions_principal_id != null ? 1 : 0
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = var.functions_principal_id
 }
 
 data "azurerm_client_config" "current" {}

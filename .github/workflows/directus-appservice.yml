@@ -56,7 +56,7 @@ jobs:
         run: |
           echo "Checking Directus health endpoint..."
           for i in {1..30}; do
-            RESPONSE=$(curl -s -w "\n%{http_code}" https://${{ env.AZURE_APPSERVICE_NAME }}.azurewebsites.net/server/health)
+            RESPONSE=$(curl -s -w "\n%{http_code}" https://${{ env.AZURE_APPSERVICE_NAME }}.azurewebsites.net/server/ping)
             HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
             BODY=$(echo "$RESPONSE" | head -n-1)
 

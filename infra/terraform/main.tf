@@ -191,25 +191,44 @@ resource "azurerm_key_vault_secret" "directus_admin_email" {
   key_vault_id = module.key_vault.vault_id
 }
 
-resource "azurerm_key_vault_secret" "directus_admin_password" {
-  name         = "directus-admin-password"
+# NOTE: Secret names below (no "directus-" prefix) MUST match the naming
+# convention the App Service module derives from directus_secrets map keys:
+# replace(lower(KEY), "_", "-")  e.g. ADMIN_PASSWORD -> admin-password
+resource "azurerm_key_vault_secret" "admin_password" {
+  name         = "admin-password"
   value        = random_password.directus_admin_password.result
   key_vault_id = module.key_vault.vault_id
 }
 
-resource "azurerm_key_vault_secret" "directus_admin_token" {
-  name         = "directus-admin-token"
+resource "azurerm_key_vault_secret" "admin_token" {
+  name         = "admin-token"
   value        = random_password.directus_admin_token.result
   key_vault_id = module.key_vault.vault_id
 }
 
-resource "azurerm_key_vault_secret" "directus_jwt_secret" {
-  name         = "directus-jwt-secret"
+resource "azurerm_key_vault_secret" "jwt_secret" {
+  name         = "jwt-secret"
   value        = random_password.directus_jwt_secret.result
   key_vault_id = module.key_vault.vault_id
 }
 
-# Storage key and SQL password no longer stored (using Managed Identity instead)
+resource "azurerm_key_vault_secret" "secret" {
+  name         = "secret"
+  value        = random_password.directus_secret.result
+  key_vault_id = module.key_vault.vault_id
+}
+
+resource "azurerm_key_vault_secret" "db_password" {
+  name         = "db-password"
+  value        = azurerm_mssql_server.directus.administrator_login_password
+  key_vault_id = module.key_vault.vault_id
+}
+
+resource "azurerm_key_vault_secret" "storage_azure_account_key" {
+  name         = "storage-azure-account-key" # matches Directus's expected env var STORAGE_AZURE_ACCOUNT_KEY
+  value        = azurerm_storage_account.content.primary_access_key
+  key_vault_id = module.key_vault.vault_id
+}
 
 # ============================================================
 # STATIC WEB APP: Angular frontend
@@ -265,17 +284,25 @@ module "container_apps" {
     CACHE_ENABLED        = "true"
     CACHE_STORE          = "memory"
     LOG_LEVEL            = "info"
+
+    # File storage: persist uploads to Azure Blob Storage instead of the
+    # container's own (ephemeral) filesystem - without this, uploaded files
+    # are lost on every restart/redeploy.
+    STORAGE_LOCATIONS            = "azure"
+    STORAGE_AZURE_DRIVER         = "azure"
+    STORAGE_AZURE_CONTAINER_NAME = azurerm_storage_container.directus_uploads.name
+    STORAGE_AZURE_ACCOUNT_NAME   = azurerm_storage_account.content.name
   }
 
   # Sensitive values -> Container App "secret" blocks, referenced via secretRef
   # (never rendered as plain env values in the portal/revision diff)
   directus_secrets = {
-    ADMIN_PASSWORD = random_password.directus_admin_password.result
-    ADMIN_TOKEN    = random_password.directus_admin_token.result
-    JWT_SECRET     = random_password.directus_jwt_secret.result
-    SECRET         = random_password.directus_secret.result
-    DB_PASSWORD    = azurerm_mssql_server.directus.administrator_login_password
-    STORAGE_AZURE_KEY = azurerm_storage_account.content.primary_access_key
+    ADMIN_PASSWORD          = random_password.directus_admin_password.result
+    ADMIN_TOKEN             = random_password.directus_admin_token.result
+    JWT_SECRET              = random_password.directus_jwt_secret.result
+    SECRET                  = random_password.directus_secret.result
+    DB_PASSWORD             = azurerm_mssql_server.directus.administrator_login_password
+    STORAGE_AZURE_ACCOUNT_KEY = azurerm_storage_account.content.primary_access_key
   }
 
   depends_on = [azurerm_mssql_database.directus]
@@ -304,6 +331,8 @@ module "app_service" {
 
   # Configuration (same as Container Apps) - defined in main.tf module.container_apps call
   directus_config = {
+    HOST                         = "0.0.0.0" # explicit - must bind all interfaces for App Service's warmup probe to reach it
+    PORT                         = "8055"    # must match WEBSITES_PORT in the app-service module
     DB_CLIENT                   = "mssql"
     DB_HOST                     = azurerm_mssql_server.directus.fully_qualified_domain_name
     DB_PORT                     = "1433"
@@ -320,46 +349,39 @@ module "app_service" {
     CACHE_ENABLED               = "true"
     CACHE_STORE                 = "memory"
     LOG_LEVEL                   = "info"
+
+    # File storage: persist uploads to Azure Blob Storage instead of the
+    # container's own (ephemeral) filesystem - without this, uploaded files
+    # are lost on every restart/redeploy.
+    STORAGE_LOCATIONS            = "azure"
+    STORAGE_AZURE_DRIVER         = "azure"
+    STORAGE_AZURE_CONTAINER_NAME = azurerm_storage_container.directus_uploads.name
+    STORAGE_AZURE_ACCOUNT_NAME   = azurerm_storage_account.content.name
   }
 
   # Sensitive values
   directus_secrets = {
-    ADMIN_PASSWORD    = random_password.directus_admin_password.result
-    ADMIN_TOKEN       = random_password.directus_admin_token.result
-    JWT_SECRET        = random_password.directus_jwt_secret.result
-    SECRET            = random_password.directus_secret.result
-    DB_PASSWORD       = azurerm_mssql_server.directus.administrator_login_password
-    STORAGE_AZURE_KEY = azurerm_storage_account.content.primary_access_key
+    ADMIN_PASSWORD          = random_password.directus_admin_password.result
+    ADMIN_TOKEN             = random_password.directus_admin_token.result
+    JWT_SECRET              = random_password.directus_jwt_secret.result
+    SECRET                  = random_password.directus_secret.result
+    DB_PASSWORD             = azurerm_mssql_server.directus.administrator_login_password
+    STORAGE_AZURE_ACCOUNT_KEY = azurerm_storage_account.content.primary_access_key
   }
 
   tags       = local.directus_tags
   depends_on = [azurerm_mssql_database.directus, module.key_vault]
 }
 
-# ============================================================
-# APP SERVICE SECURITY: Key Vault Access
-# ============================================================
-resource "azurerm_key_vault_access_policy" "app_service" {
-  count            = var.enable_app_service ? 1 : 0
-  key_vault_id     = module.key_vault.vault_id
-  object_id        = module.app_service[0].principal_id
-  tenant_id        = data.azurerm_client_config.current.tenant_id
-  secret_permissions = ["Get", "List"]
+# NOTE: App Service -> Key Vault access is an RBAC role assignment inside
+# the app-service module (vault uses rbac_authorization_enabled; legacy
+# access policies no longer apply).
 
-  depends_on = [module.app_service]
-}
-
-# ============================================================
-# APP SERVICE SECURITY: RBAC Role Assignment
-# ============================================================
-resource "azurerm_role_assignment" "app_service_storage_blob_contributor" {
-  count              = var.enable_app_service ? 1 : 0
-  scope              = azurerm_storage_account.content.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id       = module.app_service[0].principal_id
-
-  depends_on = [module.app_service]
-}
+# NOTE: App Service -> Storage RBAC (Storage Blob Data Contributor) is
+# granted inside the app-service module itself
+# (azurerm_role_assignment.app_service_storage) - this duplicate top-level
+# resource was removed after it collided with the module's grant (Azure
+# rejects two identical role assignments on the same scope/principal/role).
 
 # Get current Azure context
 data "azurerm_client_config" "current" {}
