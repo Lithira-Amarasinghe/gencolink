@@ -70,6 +70,19 @@ data "azurerm_resource_group" "main" {
   name = var.resource_group_name
 }
 
+# Read App Service's outbound IPs independently of the module output, to
+# avoid a circular dependency: the Storage Account must exist before App
+# Service can be created (App Service needs its access key), so the
+# Storage Account's network rules can't depend on App Service's own
+# resource output. This data source breaks the cycle since it's a
+# read-only lookup, not a creation dependency. Only valid once App Service
+# already exists.
+data "azurerm_linux_web_app" "existing" {
+  count               = var.enable_app_service ? 1 : 0
+  name                = "${local.app_name}-appservice"
+  resource_group_name = data.azurerm_resource_group.main.name
+}
+
 # ============================================================
 # GENERATED SECRETS (single source of truth -> Key Vault + GitHub)
 # ============================================================
@@ -107,12 +120,29 @@ resource "azurerm_storage_account" "content" {
   https_traffic_only_enabled = true
   min_tls_version            = "TLS1_2"
   tags                       = local.storage_tags
+
+  # Network lockdown: deny all data-plane access by default, allow only by
+  # IP (not resource_access_rule - Directus authenticates to Azure Storage
+  # with a shared account key, and the "resource instance" network
+  # exception only matches AAD/Managed-Identity-authenticated calls, so it
+  # would silently block Directus too). Terraform itself is unaffected
+  # (resource management uses the ARM control plane, not this data-plane
+  # firewall).
+  network_rules {
+    default_action = "Deny"
+    bypass          = ["AzureServices"]
+    ip_rules = var.enable_app_service ? split(",", data.azurerm_linux_web_app.existing[0].outbound_ip_addresses) : []
+  }
 }
 
 resource "azurerm_storage_container" "directus_uploads" {
   name                  = "directus-uploads"
   storage_account_id    = azurerm_storage_account.content.id
-  container_access_type = "blob"
+  # private (not "blob"): the website doesn't reference this container at
+  # all (confirmed - no code references blob URLs), and Directus serves
+  # files through its own /assets endpoint using its Managed Identity RBAC
+  # grant, which works independent of this public-access flag.
+  container_access_type = "private"
 }
 
 # ============================================================
@@ -149,24 +179,16 @@ resource "azurerm_mssql_database" "directus" {
   tags           = local.sql_tags
 }
 
-# Allow Container Apps to access SQL Server
-resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
-  name             = "AllowAzureServices"
+# SQL Server firewall: scoped to App Service's specific outbound IPs instead
+# of the broad AllowAzureServices (0.0.0.0) rule, which let ANY Azure
+# tenant's resources attempt a connection. Free - no VNet/Private Endpoint
+# cost.
+resource "azurerm_mssql_firewall_rule" "app_service_outbound" {
+  for_each         = var.enable_app_service ? toset(module.app_service[0].outbound_ip_addresses) : toset([])
+  name             = "AppService-${replace(each.value, ".", "-")}"
   server_id        = azurerm_mssql_server.directus.id
-  start_ip_address = "0.0.0.0"
-  end_ip_address   = "0.0.0.0"
-}
-
-# ============================================================
-# MANAGED IDENTITY: RBAC Role Assignments
-# ============================================================
-
-# Grant Container App Managed Identity permission to read from Storage Account
-# (no keys/passwords needed for Azure Blob Storage)
-resource "azurerm_role_assignment" "container_app_storage_blob_contributor" {
-  scope              = azurerm_storage_account.content.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id       = module.container_apps.principal_id
+  start_ip_address = each.value
+  end_ip_address   = each.value
 }
 
 # ============================================================
@@ -181,8 +203,6 @@ module "key_vault" {
   environment         = var.environment
   location_short      = ""  # Deprecated: location-independent naming
   tags                = local.keyvault_tags
-
-  container_apps_principal_id = module.container_apps.principal_id
 }
 
 resource "azurerm_key_vault_secret" "directus_admin_email" {
@@ -249,68 +269,7 @@ module "static_web_app" {
 }
 
 # ============================================================
-# CONTAINER APPS: Directus CMS
-# ============================================================
-module "container_apps" {
-  source = "./modules/container-apps"
-
-  resource_group_name = data.azurerm_resource_group.main.name
-  location            = local.directus_location
-  project_name        = var.project_name
-  environment         = var.environment
-  location_short      = ""  # Deprecated: location-independent naming
-  directus_image      = var.directus_image
-  enable_app_insights = var.enable_app_insights
-  tags                = local.directus_tags
-
-  directus_config = {
-    DB_CLIENT                   = "mssql"
-    DB_HOST                     = azurerm_mssql_server.directus.fully_qualified_domain_name
-    DB_PORT                     = "1433"
-    DB_DATABASE                 = var.sql_database_name
-    DB_USER                     = var.sql_admin_username
-    DB_ENCRYPT                  = "true"
-    DB_TRUST_SERVER_CERTIFICATE = "false"
-
-    ADMIN_EMAIL = var.directus_admin_email
-
-    JWT_REFRESH_TOKEN_TTL = "${var.directus_refresh_token_ttl}d"
-
-    PUBLIC_URL  = "https://${local.app_name}-directus.azurecontainerapps.io"
-    CORS_ORIGIN = "https://${module.static_web_app.default_host_name}"
-
-    RATE_LIMITER_ENABLED = "true"
-    RATE_LIMITER_STORE   = "memory"
-    CACHE_ENABLED        = "true"
-    CACHE_STORE          = "memory"
-    LOG_LEVEL            = "info"
-
-    # File storage: persist uploads to Azure Blob Storage instead of the
-    # container's own (ephemeral) filesystem - without this, uploaded files
-    # are lost on every restart/redeploy.
-    STORAGE_LOCATIONS            = "azure"
-    STORAGE_AZURE_DRIVER         = "azure"
-    STORAGE_AZURE_CONTAINER_NAME = azurerm_storage_container.directus_uploads.name
-    STORAGE_AZURE_ACCOUNT_NAME   = azurerm_storage_account.content.name
-  }
-
-  # Sensitive values -> Container App "secret" blocks, referenced via secretRef
-  # (never rendered as plain env values in the portal/revision diff)
-  directus_secrets = {
-    ADMIN_PASSWORD          = random_password.directus_admin_password.result
-    ADMIN_TOKEN             = random_password.directus_admin_token.result
-    JWT_SECRET              = random_password.directus_jwt_secret.result
-    SECRET                  = random_password.directus_secret.result
-    DB_PASSWORD             = azurerm_mssql_server.directus.administrator_login_password
-    STORAGE_AZURE_ACCOUNT_KEY = azurerm_storage_account.content.primary_access_key
-  }
-
-  depends_on = [azurerm_mssql_database.directus]
-}
-
-# ============================================================
-# APP SERVICE: Directus on Free Tier (F1)
-# Alternative to Container Apps - reuses same DB/Storage/KeyVault
+# APP SERVICE: Directus CMS
 # ============================================================
 module "app_service" {
   count  = var.enable_app_service ? 1 : 0
@@ -326,10 +285,8 @@ module "app_service" {
   key_vault_id  = module.key_vault.vault_id
   key_vault_uri = module.key_vault.vault_uri
 
-  # Storage for uploads (same as Container Apps)
   storage_account_id = azurerm_storage_account.content.id
 
-  # Configuration (same as Container Apps) - defined in main.tf module.container_apps call
   directus_config = {
     HOST                         = "0.0.0.0" # explicit - must bind all interfaces for App Service's warmup probe to reach it
     PORT                         = "8055"    # must match WEBSITES_PORT in the app-service module
@@ -343,6 +300,7 @@ module "app_service" {
     ADMIN_EMAIL                 = var.directus_admin_email
     JWT_REFRESH_TOKEN_TTL       = "${var.directus_refresh_token_ttl}d"
     PUBLIC_URL                  = "https://${local.app_name}-appservice.azurewebsites.net"
+    CORS_ENABLED                = "true"  # required - CORS_ORIGIN alone is ignored without this
     CORS_ORIGIN                 = "https://${module.static_web_app.default_host_name}"
     RATE_LIMITER_ENABLED        = "true"
     RATE_LIMITER_STORE          = "memory"
@@ -415,18 +373,6 @@ resource "github_actions_secret" "azure_swa_deployment_token" {
   value       = module.static_web_app.api_key
 }
 
-resource "github_actions_secret" "directus_api_url" {
-  repository  = var.github_repository
-  secret_name = "DIRECTUS_API_URL"
-  value       = module.container_apps.directus_url
-}
-
-resource "github_actions_secret" "directus_container_app_name" {
-  repository  = var.github_repository
-  secret_name = "DIRECTUS_CONTAINER_APP_NAME"
-  value       = module.container_apps.app_name
-}
-
 # App Service deployment secrets
 resource "github_actions_secret" "azure_appservice_name" {
   count           = var.enable_app_service ? 1 : 0
@@ -440,4 +386,15 @@ resource "github_actions_secret" "azure_appservice_url" {
   repository      = var.github_repository
   secret_name     = "AZURE_APPSERVICE_URL"
   value           = module.app_service[0].app_service_url
+}
+
+# frontend.yml injects this into the built site's runtime-config.js at
+# deploy time - was previously pointed at Container Apps' URL under the
+# name DIRECTUS_API_URL; must exist under that same secret name for the
+# frontend workflow to keep working unchanged.
+resource "github_actions_secret" "directus_api_url" {
+  count       = var.enable_app_service ? 1 : 0
+  repository  = var.github_repository
+  secret_name = "DIRECTUS_API_URL"
+  value       = module.app_service[0].app_service_url
 }

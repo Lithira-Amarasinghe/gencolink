@@ -28,15 +28,6 @@ resource "azurerm_role_assignment" "deployer_secrets_officer" {
   principal_id         = data.azurerm_client_config.current.object_id
 }
 
-# Container Apps managed identity reads secrets.
-# No count/conditional on purpose: principal_id is only known after the
-# Container App exists - count on an unknown value errors at plan time.
-resource "azurerm_role_assignment" "container_apps_secrets_user" {
-  scope                = azurerm_key_vault.main.id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = var.container_apps_principal_id
-}
-
 # Azure Functions managed identity reads secrets (if provided)
 resource "azurerm_role_assignment" "functions_secrets_user" {
   count                = var.functions_principal_id != null ? 1 : 0

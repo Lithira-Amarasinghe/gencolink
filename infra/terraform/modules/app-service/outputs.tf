@@ -27,3 +27,8 @@ output "service_plan_id" {
   value       = azurerm_service_plan.main.id
   description = "App Service Plan ID"
 }
+
+output "outbound_ip_addresses" {
+  value       = split(",", azurerm_linux_web_app.main.outbound_ip_addresses)
+  description = "App Service outbound IPs (shared, tied to the App Service Plan - not static across region/SKU changes) - used to scope SQL Server firewall rules instead of the broad AllowAzureServices (0.0.0.0) rule"
+}

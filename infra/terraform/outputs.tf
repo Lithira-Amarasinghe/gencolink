@@ -5,12 +5,12 @@ output "static_web_app_url" {
 
 output "directus_url" {
   description = "Directus base URL"
-  value       = module.container_apps.directus_url
+  value       = var.enable_app_service ? "https://${module.app_service[0].app_service_fqdn}" : "App Service disabled"
 }
 
 output "directus_admin_url" {
   description = "Directus admin panel URL"
-  value       = "${module.container_apps.directus_url}/admin"
+  value       = var.enable_app_service ? "https://${module.app_service[0].app_service_fqdn}/admin" : "App Service disabled"
 }
 
 output "key_vault_name" {
@@ -49,7 +49,7 @@ output "resource_names" {
   description = "All resource names (clean, location-independent)"
   value = {
     app_name           = local.app_name
-    directus_app       = module.container_apps.app_name
+    directus_app       = var.enable_app_service ? module.app_service[0].app_service_name : null
     storage_account    = azurerm_storage_account.content.name
     key_vault          = module.key_vault.vault_name
     static_web_app     = module.static_web_app.name
@@ -59,9 +59,8 @@ output "resource_names" {
 output "deployment_summary" {
   value = {
     frontend_url       = module.static_web_app.default_url
-    directus_admin_url = "${module.container_apps.directus_url}/admin"
+    directus_admin_url = var.enable_app_service ? "https://${module.app_service[0].app_service_fqdn}/admin" : "App Service disabled"
     key_vault          = module.key_vault.vault_name
-    directus_image     = var.directus_image
 
     # New: Location info
     locations = {

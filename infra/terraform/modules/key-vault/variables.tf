@@ -34,8 +34,3 @@ variable "functions_principal_id" {
   type        = string
   default     = null
 }
-
-variable "container_apps_principal_id" {
-  description = "Principal ID of Container Apps for access policy (always provided by root - see main.tf)"
-  type        = string
-}

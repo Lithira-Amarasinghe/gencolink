@@ -192,11 +192,6 @@ variable "directus_refresh_token_ttl" {
   default     = 7
 }
 
-variable "directus_image" {
-  description = "Directus Docker image (pinned version for production stability)"
-  type        = string
-  default     = "directus/directus:10.13.1"
-}
 
 variable "azure_communication_email_domain" {
   description = "Azure Communication Email domain"
