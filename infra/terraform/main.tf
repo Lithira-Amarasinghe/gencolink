@@ -393,6 +393,13 @@ resource "azurerm_linux_function_app" "main" {
       node_version = "20"
     }
 
+    # Required on Dedicated (B1) plans - without it, the Function host isn't
+    # kept warm/loaded and requests fail with a generic empty 500 from the
+    # platform (Kestrel), before user code ever runs. Not needed (or billed
+    # extra) on Consumption plans, but this Function shares Directus's paid
+    # B1 plan, so it must be explicit here.
+    always_on = true
+
     # Only the frontend origin may call these endpoints directly from the browser
     cors {
       allowed_origins = ["https://${module.static_web_app.default_host_name}"]

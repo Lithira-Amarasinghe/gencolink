@@ -1,47 +1,79 @@
 // Azure Function: send-contact-email
 // Triggered by a Directus Flow when a new contact_submissions item is created.
 // Sends a notification email to the Gencolink team via Azure Communication Services.
+//
+// Response contract (always JSON, never leaks internal/raw errors):
+//   { "success": true,  "message": "..." }                on success
+//   { "success": false, "message": "...", "ref": "<id>" } on failure
+// The `ref` mirrors the Azure invocation id so a failed response can be traced
+// back to the detailed server-side log without exposing internals to the caller.
 
 const { EmailClient } = require('@azure/communication-email');
 
-// ─── Config — set these as Application Settings in the Azure Portal ────────────
 const ACS_CONNECTION_STRING = process.env.ACS_CONNECTION_STRING;
-// The verified sender address on your custom ACS domain, e.g. noreply@mail.gencolink.com
 const SENDER_ADDRESS = process.env.ACS_SENDER_ADDRESS;
-// The inbox you want contact leads delivered to
 const RECIPIENT_ADDRESS = process.env.CONTACT_RECIPIENT_EMAIL;
 
+// Field length caps - guard against oversized payloads and email-content abuse.
+const LIMITS = { name: 200, email: 320, company: 200, message: 5000 };
+
+// Pragmatic email shape check (not full RFC 5322 - just rejects obvious garbage).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 module.exports = async function (context, req) {
-  context.res = {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
+  const ref = context.invocationId;
+
+  // CORS is enforced at the platform level (App Service CORS, scoped to the
+  // frontend origin in Terraform). This function is called server-to-server
+  // by the Directus Flow, so no wildcard origin is set here.
+  const respond = (status, success, message) => {
+    context.res = {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+      body: success ? { success, message } : { success, message, ref },
+    };
   };
 
   if (req.method === 'OPTIONS') {
-    context.res.status = 204;
+    context.res = { status: 204 };
     return;
   }
 
-  const cors = context.res.headers;
-
+  // Misconfiguration (missing settings) is a server fault, not the caller's.
   if (!ACS_CONNECTION_STRING || !SENDER_ADDRESS || !RECIPIENT_ADDRESS) {
-    context.log.error('Missing required environment variables: ACS_CONNECTION_STRING, ACS_SENDER_ADDRESS, CONTACT_RECIPIENT_EMAIL');
-    context.res = { status: 500, body: 'Server misconfiguration.', headers: cors };
+    context.log.error(
+      `[${ref}] Missing required settings:`,
+      JSON.stringify({
+        ACS_CONNECTION_STRING: Boolean(ACS_CONNECTION_STRING),
+        ACS_SENDER_ADDRESS: Boolean(SENDER_ADDRESS),
+        CONTACT_RECIPIENT_EMAIL: Boolean(RECIPIENT_ADDRESS),
+      })
+    );
+    respond(500, false, 'The email service is temporarily unavailable. Please try again later.');
     return;
   }
 
-  const { name, email, company, message } = req.body ?? {};
-
-  if (!name || !email || !company || !message) {
-    context.res = { status: 400, body: 'Missing required fields: name, email, company, message.', headers: cors };
+  // Body must be a JSON object.
+  const body = req.body;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    respond(400, false, 'Invalid request body. Expected a JSON object.');
     return;
   }
+
+  const validationError = validate(body);
+  if (validationError) {
+    context.log.warn(`[${ref}] Validation failed: ${validationError}`);
+    respond(400, false, validationError);
+    return;
+  }
+
+  // Normalise (trim) after validation passed.
+  const name = body.name.trim();
+  const email = body.email.trim();
+  const company = body.company.trim();
+  const message = body.message.trim();
 
   const client = new EmailClient(ACS_CONNECTION_STRING);
-
   const emailMessage = {
     senderAddress: SENDER_ADDRESS,
     recipients: {
@@ -60,17 +92,38 @@ module.exports = async function (context, req) {
     const result = await poller.pollUntilDone();
 
     if (result.status === 'Succeeded') {
-      context.log(`Contact email sent. Message ID: ${result.id}`);
-      context.res = { status: 200, body: { messageId: result.id }, headers: cors };
+      context.log(`[${ref}] Contact email sent. ACS message id: ${result.id}`);
+      respond(200, true, 'Your message has been sent. Our team will be in touch soon.');
     } else {
-      context.log.error('ACS email send failed:', JSON.stringify(result.error));
-      context.res = { status: 502, body: 'Email delivery failed.', headers: cors };
+      // ACS accepted the request but delivery did not succeed.
+      context.log.error(`[${ref}] ACS delivery not succeeded:`, JSON.stringify(result.error ?? result.status));
+      respond(502, false, "We couldn't deliver your message right now. Please try again in a few minutes.");
     }
   } catch (err) {
-    context.log.error('Unexpected error sending email:', err);
-    context.res = { status: 500, body: 'Internal error.', headers: cors };
+    // Full detail stays server-side only; caller gets a generic message + ref.
+    context.log.error(`[${ref}] Unexpected error sending email:`, err);
+    respond(500, false, 'Something went wrong while sending your message. Please try again later.');
   }
 };
+
+function validate({ name, email, company, message }) {
+  const fields = { name, email, company, message };
+
+  for (const [key, value] of Object.entries(fields)) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      return `Missing or invalid field: ${key}.`;
+    }
+    if (value.length > LIMITS[key]) {
+      return `Field "${key}" exceeds the maximum length of ${LIMITS[key]} characters.`;
+    }
+  }
+
+  if (!EMAIL_RE.test(email.trim())) {
+    return 'Please provide a valid email address.';
+  }
+
+  return null;
+}
 
 function buildPlainText({ name, email, company, message }) {
   return [
