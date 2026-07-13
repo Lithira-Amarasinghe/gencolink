@@ -330,6 +330,13 @@ module "app_service" {
     STORAGE_AZURE_DRIVER         = "azure"
     STORAGE_AZURE_CONTAINER_NAME = azurerm_storage_container.directus_uploads.name
     STORAGE_AZURE_ACCOUNT_NAME   = azurerm_storage_account.content.name
+
+    # Lets the "Notify on Contact Submission" Flow reference these as
+    # {{$env.AZURE_FUNCTION_URL}} / {{$env.AZURE_FUNCTION_KEY}} instead of
+    # hardcoded values - kept in sync automatically (see null_resource
+    # .sync_directus_flow below).
+    FLOWS_ENV_ALLOW_LIST = "AZURE_FUNCTION_URL,AZURE_FUNCTION_KEY"
+    AZURE_FUNCTION_URL   = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
   }
 
   # Sensitive values
@@ -340,6 +347,7 @@ module "app_service" {
     SECRET                  = random_password.directus_secret.result
     DB_PASSWORD             = azurerm_mssql_server.directus.administrator_login_password
     STORAGE_AZURE_ACCOUNT_KEY = azurerm_storage_account.content.primary_access_key
+    AZURE_FUNCTION_KEY      = data.azurerm_function_app_host_keys.main[0].default_function_key
   }
 
   tags       = local.directus_tags
@@ -353,12 +361,24 @@ module "app_service" {
 # extra Plan charge. Only new cost is negligible Functions execution
 # (well within free monthly grant) - no new Plan, no new compute SKU.
 # ============================================================
+# Read-only lookup of the already-created App Service Plan, independent of
+# module.app_service's own outputs - avoids a circular dependency, since
+# module.app_service's directus_config/directus_secrets now also reference
+# this Function App (for AZURE_FUNCTION_URL/KEY). Same pattern as
+# data.azurerm_linux_web_app.existing above. Only valid once the Plan
+# already exists (true here - created by module.app_service previously).
+data "azurerm_service_plan" "existing" {
+  count               = var.enable_app_service ? 1 : 0
+  name                = "${local.app_name}-asp"
+  resource_group_name = data.azurerm_resource_group.main.name
+}
+
 resource "azurerm_linux_function_app" "main" {
   count               = var.enable_app_service ? 1 : 0
   name                = "${local.app_name}-functions"
   resource_group_name = data.azurerm_resource_group.main.name
   location            = coalesce(var.app_service_location, var.primary_location)
-  service_plan_id     = module.app_service[0].service_plan_id
+  service_plan_id     = data.azurerm_service_plan.existing[0].id
 
   # Reuses the Directus storage account for Functions' internal bookkeeping
   # (triggers/locks) instead of provisioning a dedicated one - avoids an
@@ -392,7 +412,7 @@ resource "azurerm_linux_function_app" "main" {
 
   tags = local.functions_tags
 
-  depends_on = [module.app_service, azurerm_key_vault_secret.acs_connection_string]
+  depends_on = [data.azurerm_service_plan.existing, azurerm_key_vault_secret.acs_connection_string]
 }
 
 # RBAC: Function App managed identity reads Key Vault secrets (ACS connection string)
@@ -403,6 +423,49 @@ resource "azurerm_role_assignment" "functions_kv_secrets_user" {
   principal_id         = azurerm_linux_function_app.main[0].identity[0].principal_id
 
   depends_on = [azurerm_linux_function_app.main]
+}
+
+# Reads the Function App's auto-generated default host key - lets Directus
+# call it without a secret ever being typed in manually.
+data "azurerm_function_app_host_keys" "main" {
+  count               = var.enable_app_service ? 1 : 0
+  name                = azurerm_linux_function_app.main[0].name
+  resource_group_name = data.azurerm_resource_group.main.name
+
+  depends_on = [azurerm_linux_function_app.main]
+}
+
+resource "azurerm_key_vault_secret" "azure_function_key" {
+  count        = var.enable_app_service ? 1 : 0
+  name         = "azure-function-key"
+  value        = data.azurerm_function_app_host_keys.main[0].default_function_key
+  key_vault_id = module.key_vault.vault_id
+}
+
+# Keeps the Directus Flow's webhook operation pointed at
+# {{$env.AZURE_FUNCTION_URL}} / {{$env.AZURE_FUNCTION_KEY}} (set as App
+# Service settings below) instead of a hardcoded URL/key - identical Flow
+# config works in every environment, and `terraform apply` re-syncs it
+# automatically whenever the Function's key/URL changes. No manual editing
+# in the Directus UI.
+resource "null_resource" "sync_directus_flow" {
+  count = var.enable_app_service ? 1 : 0
+
+  triggers = {
+    function_url = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
+    function_key = data.azurerm_function_app_host_keys.main[0].default_function_key
+  }
+
+  provisioner "local-exec" {
+    command     = "node \"${path.module}/scripts/sync-directus-flow.js\""
+    interpreter = ["bash", "-c"]
+    environment = {
+      DIRECTUS_URL         = module.app_service[0].app_service_url
+      DIRECTUS_ADMIN_TOKEN = random_password.directus_admin_token.result
+    }
+  }
+
+  depends_on = [module.app_service, azurerm_linux_function_app.main, data.azurerm_function_app_host_keys.main]
 }
 
 # NOTE: App Service -> Key Vault access is an RBAC role assignment inside
