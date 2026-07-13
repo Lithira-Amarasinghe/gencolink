@@ -58,8 +58,20 @@ export class App implements AfterViewInit {
     { label: 'Contact', target: 'contact' },
   ] as const;
 
+  private sectionObserver: IntersectionObserver | null = null;
+  private itemObserver: IntersectionObserver | null = null;
+
   constructor() {
     void this.contentStore.load();
+
+    // Re-run scroll-reveal observation whenever Directus content arrives.
+    // Without this, rows rendered after the initial (pre-data) DOM snapshot
+    // never get observed, so they stay stuck at opacity:0 forever - visible
+    // in the DOM/inspector but never actually shown on screen.
+    effect(() => {
+      this.contentStore.content();
+      setTimeout(() => this.setupScrollAnimation(), 0);
+    });
   }
 
   ngAfterViewInit(): void {
