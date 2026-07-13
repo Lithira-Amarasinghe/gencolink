@@ -199,6 +199,13 @@ variable "azure_communication_email_domain" {
   default     = ""
 }
 
+variable "acs_connection_string" {
+  description = "Azure Communication Services connection string (send-contact-email function)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # ============================================================
 # APP SERVICE DEPLOYMENT (Alternative to Container Apps)
 # ============================================================

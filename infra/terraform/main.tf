@@ -64,6 +64,15 @@ locals {
       Tier     = "Standard"
     }
   )
+
+  functions_tags = merge(
+    local.common_tags,
+    {
+      Service  = "Functions"
+      Location = coalesce(var.app_service_location, var.primary_location)
+      Tier     = "Standard"
+    }
+  )
 }
 
 data "azurerm_resource_group" "main" {
@@ -250,6 +259,12 @@ resource "azurerm_key_vault_secret" "storage_azure_account_key" {
   key_vault_id = module.key_vault.vault_id
 }
 
+resource "azurerm_key_vault_secret" "acs_connection_string" {
+  name         = "acs-connection-string"
+  value        = var.acs_connection_string
+  key_vault_id = module.key_vault.vault_id
+}
+
 # ============================================================
 # STATIC WEB APP: Angular frontend
 # ============================================================
@@ -331,6 +346,65 @@ module "app_service" {
   depends_on = [azurerm_mssql_database.directus, module.key_vault]
 }
 
+# ============================================================
+# AZURE FUNCTIONS: send-contact-email (Directus Flow webhook target)
+# Deployed onto the SAME App Service Plan as Directus (gencolink-prod-asp,
+# B1) - Linux apps on one Plan share its compute/cost, so this adds no
+# extra Plan charge. Only new cost is negligible Functions execution
+# (well within free monthly grant) - no new Plan, no new compute SKU.
+# ============================================================
+resource "azurerm_linux_function_app" "main" {
+  count               = var.enable_app_service ? 1 : 0
+  name                = "${local.app_name}-functions"
+  resource_group_name = data.azurerm_resource_group.main.name
+  location            = coalesce(var.app_service_location, var.primary_location)
+  service_plan_id     = module.app_service[0].service_plan_id
+
+  # Reuses the Directus storage account for Functions' internal bookkeeping
+  # (triggers/locks) instead of provisioning a dedicated one - avoids an
+  # additional Storage Account cost.
+  storage_account_name       = azurerm_storage_account.content.name
+  storage_account_access_key = azurerm_storage_account.content.primary_access_key
+
+  https_only = true
+
+  site_config {
+    application_stack {
+      node_version = "20"
+    }
+
+    # Only the frontend origin may call these endpoints directly from the browser
+    cors {
+      allowed_origins = ["https://${module.static_web_app.default_host_name}"]
+    }
+  }
+
+  app_settings = {
+    FUNCTIONS_WORKER_RUNTIME = "node"
+    ACS_SENDER_ADDRESS       = var.from_email_address
+    CONTACT_RECIPIENT_EMAIL  = var.contact_recipient_email
+    ACS_CONNECTION_STRING    = "@Microsoft.KeyVault(SecretUri=${trimsuffix(module.key_vault.vault_uri, "/")}/secrets/acs-connection-string/)"
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  tags = local.functions_tags
+
+  depends_on = [module.app_service, azurerm_key_vault_secret.acs_connection_string]
+}
+
+# RBAC: Function App managed identity reads Key Vault secrets (ACS connection string)
+resource "azurerm_role_assignment" "functions_kv_secrets_user" {
+  count                = var.enable_app_service ? 1 : 0
+  scope                = module.key_vault.vault_id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_function_app.main[0].identity[0].principal_id
+
+  depends_on = [azurerm_linux_function_app.main]
+}
+
 # NOTE: App Service -> Key Vault access is an RBAC role assignment inside
 # the app-service module (vault uses rbac_authorization_enabled; legacy
 # access policies no longer apply).
@@ -397,4 +471,11 @@ resource "github_actions_secret" "directus_api_url" {
   repository  = var.github_repository
   secret_name = "DIRECTUS_API_URL"
   value       = module.app_service[0].app_service_url
+}
+
+resource "github_actions_secret" "azure_functions_app_name" {
+  count       = var.enable_app_service ? 1 : 0
+  repository  = var.github_repository
+  secret_name = "AZURE_FUNCTIONS_APP_NAME"
+  value       = azurerm_linux_function_app.main[0].name
 }
