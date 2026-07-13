@@ -2,7 +2,6 @@
   "name": "gencolink-functions",
   "version": "2.0.0",
   "description": "Ultra-low-cost serverless backend for Gencolink — Cosmos DB, Blob Storage, SendGrid",
-  "main": "index.js",
   "scripts": {
     "start": "func start",
     "build": "echo 'No build step required for JS functions'"
