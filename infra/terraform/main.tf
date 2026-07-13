@@ -403,7 +403,7 @@ resource "azurerm_linux_function_app" "main" {
     FUNCTIONS_WORKER_RUNTIME = "node"
     ACS_SENDER_ADDRESS       = var.from_email_address
     CONTACT_RECIPIENT_EMAIL  = var.contact_recipient_email
-    ACS_CONNECTION_STRING    = "@Microsoft.KeyVault(SecretUri=${trimsuffix(module.key_vault.vault_uri, "/")}/secrets/acs-connection-string/)"
+    ACS_CONNECTION_STRING    = "@Microsoft.KeyVault(SecretUri=${trimsuffix(module.key_vault.vault_uri, "/")}/secrets/acs-connection-string)"
   }
 
   identity {
