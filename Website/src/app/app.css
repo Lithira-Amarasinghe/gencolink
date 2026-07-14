@@ -509,6 +509,79 @@ p {
   }
 }
 
+/* Dark-background variant (Why section sits on --ink) - the light-mode
+   navy-soft fill is invisible there, so invert to a translucent white. */
+.skeleton-block--invert {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.skeleton-block--invert::after {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 80%
+  );
+}
+
+/* ---------- Section heading skeleton (eyebrow / h2 / description) ---------- */
+/* Shared by Services, Why, FAQ, and Contact section headings while CMS text loads. */
+
+.skeleton-eyebrow {
+  width: 120px;
+  height: 12px;
+  margin-bottom: 14px;
+  border-radius: 3px;
+}
+
+.skeleton-heading {
+  width: min(420px, 70%);
+  height: clamp(30px, 3vw, 40px);
+  border-radius: 5px;
+}
+
+.skeleton-desc-line {
+  width: min(440px, 90%);
+  height: 13px;
+  border-radius: 3px;
+}
+
+.skeleton-desc-line + .skeleton-desc-line {
+  margin-top: 8px;
+  width: min(280px, 60%);
+}
+
+/* ---------- Values grid skeleton (Why section, dark background) ---------- */
+
+.value-item--skeleton {
+  pointer-events: none;
+}
+
+.skeleton-value-node {
+  width: 10px;
+  height: 10px;
+  margin-bottom: 22px;
+  border-radius: 2px;
+}
+
+.skeleton-value-title {
+  width: 65%;
+  height: 17px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
+.skeleton-value-body {
+  width: 92%;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.skeleton-value-body + .skeleton-value-body {
+  margin-top: 7px;
+  width: 70%;
+}
+
 /* ---------- FAQ skeleton (CMS content in flight) ---------- */
 
 .faq-item--skeleton {

@@ -43,11 +43,22 @@
 
   <section id="services" class="section-shell services-section" data-fade-in aria-labelledby="services-title">
     <div class="section-heading split">
-      <div>
-        <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.servicesSection().eyebrow }}</p>
-        <h2 id="services-title" class="reveal-item" style="--i: 1">{{ contentStore.servicesSection().heading }}</h2>
-      </div>
-      <p class="reveal-item" style="--i: 2">{{ contentStore.servicesSection().description }}</p>
+      @if (contentStore.loading()) {
+        <div aria-hidden="true">
+          <span class="skeleton-block skeleton-eyebrow"></span>
+          <span class="skeleton-block skeleton-heading"></span>
+        </div>
+        <p aria-hidden="true">
+          <span class="skeleton-block skeleton-desc-line"></span>
+          <span class="skeleton-block skeleton-desc-line"></span>
+        </p>
+      } @else {
+        <div>
+          <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.servicesSection().eyebrow }}</p>
+          <h2 id="services-title" class="reveal-item" style="--i: 1">{{ contentStore.servicesSection().heading }}</h2>
+        </div>
+        <p class="reveal-item" style="--i: 2">{{ contentStore.servicesSection().description }}</p>
+      }
     </div>
 
     <div class="service-list" aria-label="Gencolink service catalog" [attr.aria-busy]="contentStore.loading()">
@@ -84,20 +95,42 @@
   <section id="why" class="why-section" data-fade-in aria-labelledby="why-title">
     <div class="section-shell">
       <div class="why-intro">
-        <div class="why-intro-head">
-          <p class="eyebrow eyebrow--invert reveal-item" style="--i: 0">{{ contentStore.whySection().eyebrow }}</p>
-          <h2 id="why-title" class="reveal-item" style="--i: 1">{{ contentStore.whySection().heading }}</h2>
-        </div>
-        <p class="why-lead reveal-item" style="--i: 2">{{ contentStore.whySection().description }}</p>
+        @if (contentStore.loading()) {
+          <div class="why-intro-head" aria-hidden="true">
+            <span class="skeleton-block skeleton-block--invert skeleton-eyebrow"></span>
+            <span class="skeleton-block skeleton-block--invert skeleton-heading"></span>
+          </div>
+          <p class="why-lead" aria-hidden="true">
+            <span class="skeleton-block skeleton-block--invert skeleton-desc-line"></span>
+            <span class="skeleton-block skeleton-block--invert skeleton-desc-line"></span>
+          </p>
+        } @else {
+          <div class="why-intro-head">
+            <p class="eyebrow eyebrow--invert reveal-item" style="--i: 0">{{ contentStore.whySection().eyebrow }}</p>
+            <h2 id="why-title" class="reveal-item" style="--i: 1">{{ contentStore.whySection().heading }}</h2>
+          </div>
+          <p class="why-lead reveal-item" style="--i: 2">{{ contentStore.whySection().description }}</p>
+        }
       </div>
 
-      <ul class="value-grid">
-        @for (value of contentStore.values(); track value.title; let i = $index) {
-          <li class="value-item" [style.--i]="i">
-            <span class="value-node" aria-hidden="true"></span>
-            <h3>{{ value.title }}</h3>
-            <p>{{ value.body }}</p>
-          </li>
+      <ul class="value-grid" [attr.aria-busy]="contentStore.loading()">
+        @if (contentStore.loading()) {
+          @for (row of [0, 1, 2]; track row) {
+            <li class="value-item value-item--skeleton" aria-hidden="true">
+              <span class="skeleton-block skeleton-block--invert skeleton-value-node"></span>
+              <span class="skeleton-block skeleton-block--invert skeleton-value-title"></span>
+              <span class="skeleton-block skeleton-block--invert skeleton-value-body"></span>
+              <span class="skeleton-block skeleton-block--invert skeleton-value-body"></span>
+            </li>
+          }
+        } @else {
+          @for (value of contentStore.values(); track value.title; let i = $index) {
+            <li class="value-item" [style.--i]="i">
+              <span class="value-node" aria-hidden="true"></span>
+              <h3>{{ value.title }}</h3>
+              <p>{{ value.body }}</p>
+            </li>
+          }
         }
       </ul>
     </div>
@@ -105,10 +138,17 @@
 
   <section id="faq" class="section-shell faq-section" data-fade-in aria-labelledby="faq-title">
     <div class="section-heading split">
-      <div>
-        <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.faqSection().eyebrow }}</p>
-        <h2 id="faq-title" class="reveal-item" style="--i: 1">{{ contentStore.faqSection().heading }}</h2>
-      </div>
+      @if (contentStore.loading()) {
+        <div aria-hidden="true">
+          <span class="skeleton-block skeleton-eyebrow"></span>
+          <span class="skeleton-block skeleton-heading"></span>
+        </div>
+      } @else {
+        <div>
+          <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.faqSection().eyebrow }}</p>
+          <h2 id="faq-title" class="reveal-item" style="--i: 1">{{ contentStore.faqSection().heading }}</h2>
+        </div>
+      }
       <p class="faq-aside reveal-item" style="--i: 2">
         Can't find your answer?
         <button type="button" class="text-link" (click)="scrollTo('contact')">
@@ -147,9 +187,20 @@
   <section id="contact" class="contact-section" data-fade-in aria-labelledby="contact-title">
     <div class="section-shell contact-layout">
       <div class="contact-copy">
-        <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.contactSection().eyebrow }}</p>
-        <h2 id="contact-title" class="reveal-item" style="--i: 1">{{ contentStore.contactSection().heading }}</h2>
-        <p class="reveal-item" style="--i: 2">{{ contentStore.contactSection().description }}</p>
+        @if (contentStore.loading()) {
+          <div aria-hidden="true">
+            <span class="skeleton-block skeleton-eyebrow"></span>
+            <span class="skeleton-block skeleton-heading"></span>
+          </div>
+          <p aria-hidden="true">
+            <span class="skeleton-block skeleton-desc-line"></span>
+            <span class="skeleton-block skeleton-desc-line"></span>
+          </p>
+        } @else {
+          <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.contactSection().eyebrow }}</p>
+          <h2 id="contact-title" class="reveal-item" style="--i: 1">{{ contentStore.contactSection().heading }}</h2>
+          <p class="reveal-item" style="--i: 2">{{ contentStore.contactSection().description }}</p>
+        }
       </div>
 
       <form
