@@ -194,15 +194,14 @@ variable "directus_refresh_token_ttl" {
 
 
 variable "azure_communication_email_domain" {
-  description = "Azure Communication Email domain"
+  description = "Azure Communication Services resource endpoint URL, e.g. https://<name>.<region>.communication.azure.com/ (passed to the function as ACS_ENDPOINT for managed-identity auth)"
   type        = string
   default     = ""
 }
 
-variable "acs_connection_string" {
-  description = "Azure Communication Services connection string (send-contact-email function)"
+variable "acs_resource_name" {
+  description = "Name of the Azure Communication Services resource the Function App is granted email-send access on (used to build the RBAC scope). Not a secret."
   type        = string
-  sensitive   = true
   default     = ""
 }
 
@@ -238,9 +237,10 @@ variable "sql_admin_username" {
 }
 
 variable "sql_admin_password" {
-  description = "SQL Server admin password"
+  description = "SQL Server admin password. Leave empty (default) to let Terraform auto-generate and manage it via random_password.sql_admin_password - only set this to pin a specific password."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "sql_service_tier" {

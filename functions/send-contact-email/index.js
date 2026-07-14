@@ -9,10 +9,18 @@
 // back to the detailed server-side log without exposing internals to the caller.
 
 const { EmailClient } = require('@azure/communication-email');
+const { DefaultAzureCredential } = require('@azure/identity');
 
-const ACS_CONNECTION_STRING = process.env.ACS_CONNECTION_STRING;
+// Entra ID (Managed Identity) auth - no secret anywhere. In Azure the Function
+// App's system-assigned identity is granted "Communication and Email Service
+// Owner" on the ACS resource; DefaultAzureCredential picks that identity up
+// automatically. Locally it falls back to the developer's `az login` session.
+const ACS_ENDPOINT = process.env.ACS_ENDPOINT;
 const SENDER_ADDRESS = process.env.ACS_SENDER_ADDRESS;
 const RECIPIENT_ADDRESS = process.env.CONTACT_RECIPIENT_EMAIL;
+
+// Built once and reused across warm invocations (token caching lives here).
+const credential = new DefaultAzureCredential();
 
 // Field length caps - guard against oversized payloads and email-content abuse.
 const LIMITS = { name: 200, email: 320, company: 200, message: 5000 };
@@ -40,11 +48,11 @@ module.exports = async function (context, req) {
   }
 
   // Misconfiguration (missing settings) is a server fault, not the caller's.
-  if (!ACS_CONNECTION_STRING || !SENDER_ADDRESS || !RECIPIENT_ADDRESS) {
+  if (!ACS_ENDPOINT || !SENDER_ADDRESS || !RECIPIENT_ADDRESS) {
     context.log.error(
       `[${ref}] Missing required settings:`,
       JSON.stringify({
-        ACS_CONNECTION_STRING: Boolean(ACS_CONNECTION_STRING),
+        ACS_ENDPOINT: Boolean(ACS_ENDPOINT),
         ACS_SENDER_ADDRESS: Boolean(SENDER_ADDRESS),
         CONTACT_RECIPIENT_EMAIL: Boolean(RECIPIENT_ADDRESS),
       })
@@ -73,7 +81,7 @@ module.exports = async function (context, req) {
   const company = body.company.trim();
   const message = body.message.trim();
 
-  const client = new EmailClient(ACS_CONNECTION_STRING);
+  const client = new EmailClient(ACS_ENDPOINT, credential);
   const emailMessage = {
     senderAddress: SENDER_ADDRESS,
     recipients: {

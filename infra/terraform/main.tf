@@ -259,11 +259,9 @@ resource "azurerm_key_vault_secret" "storage_azure_account_key" {
   key_vault_id = module.key_vault.vault_id
 }
 
-resource "azurerm_key_vault_secret" "acs_connection_string" {
-  name         = "acs-connection-string"
-  value        = var.acs_connection_string
-  key_vault_id = module.key_vault.vault_id
-}
+# NOTE: the ACS connection string secret was removed - the Function App now
+# authenticates to ACS with its managed identity (Entra ID), so there is no
+# ACS access key to store. See azurerm_role_assignment.functions_acs_email_sender.
 
 # ============================================================
 # STATIC WEB APP: Angular frontend
@@ -410,7 +408,11 @@ resource "azurerm_linux_function_app" "main" {
     FUNCTIONS_WORKER_RUNTIME = "node"
     ACS_SENDER_ADDRESS       = var.from_email_address
     CONTACT_RECIPIENT_EMAIL  = var.contact_recipient_email
-    ACS_CONNECTION_STRING    = "@Microsoft.KeyVault(SecretUri=${trimsuffix(module.key_vault.vault_uri, "/")}/secrets/acs-connection-string)"
+    # No secret: the function authenticates to ACS with its own managed identity
+    # (see azurerm_role_assignment.functions_acs_email_sender below). Only the
+    # non-sensitive resource endpoint is needed. var.azure_communication_email_domain
+    # holds the ACS endpoint URL, e.g. https://<name>.<region>.communication.azure.com/.
+    ACS_ENDPOINT = var.azure_communication_email_domain
   }
 
   identity {
@@ -419,14 +421,18 @@ resource "azurerm_linux_function_app" "main" {
 
   tags = local.functions_tags
 
-  depends_on = [data.azurerm_service_plan.existing, azurerm_key_vault_secret.acs_connection_string]
+  depends_on = [data.azurerm_service_plan.existing]
 }
 
-# RBAC: Function App managed identity reads Key Vault secrets (ACS connection string)
-resource "azurerm_role_assignment" "functions_kv_secrets_user" {
+# RBAC: Function App managed identity sends email through ACS via Entra ID -
+# no connection string / access key stored anywhere. "Communication and Email
+# Service Owner" is the built-in role that authorizes email send. Scoped to the
+# single Communication Services resource (least privilege). The ACS resource is
+# not managed by this Terraform, so its id is composed from the resource group.
+resource "azurerm_role_assignment" "functions_acs_email_sender" {
   count                = var.enable_app_service ? 1 : 0
-  scope                = module.key_vault.vault_id
-  role_definition_name = "Key Vault Secrets User"
+  scope                = "${data.azurerm_resource_group.main.id}/providers/Microsoft.Communication/communicationServices/${var.acs_resource_name}"
+  role_definition_name = "Communication and Email Service Owner"
   principal_id         = azurerm_linux_function_app.main[0].identity[0].principal_id
 
   depends_on = [azurerm_linux_function_app.main]
