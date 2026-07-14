@@ -50,19 +50,33 @@
       <p class="reveal-item" style="--i: 2">{{ contentStore.servicesSection().description }}</p>
     </div>
 
-    <div class="service-list" aria-label="Gencolink service catalog">
-      @for (service of contentStore.services(); track service.title; let i = $index) {
-        <div class="service-row" [style.--i]="i">
-          <span class="service-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
-          <span class="service-row-copy">
-            <span class="service-title">{{ service.title }}</span>
-            <span class="service-body">{{ service.body }}</span>
-          </span>
-          <button type="button" class="text-link service-explore" (click)="scrollTo('contact')">
-            Explore
-            <svg lucideArrowRight aria-hidden="true"></svg>
-          </button>
-        </div>
+    <div class="service-list" aria-label="Gencolink service catalog" [attr.aria-busy]="contentStore.loading()">
+      @if (contentStore.loading()) {
+        @for (row of [0, 1, 2, 3, 4]; track row) {
+          <div class="service-row service-row--skeleton" aria-hidden="true">
+            <span class="skeleton-block skeleton-index"></span>
+            <span class="service-row-copy">
+              <span class="skeleton-block skeleton-title"></span>
+              <span class="skeleton-block skeleton-body"></span>
+              <span class="skeleton-block skeleton-body skeleton-body--short"></span>
+            </span>
+            <span class="skeleton-block skeleton-action"></span>
+          </div>
+        }
+      } @else {
+        @for (service of contentStore.services(); track service.title; let i = $index) {
+          <div class="service-row" [style.--i]="i">
+            <span class="service-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
+            <span class="service-row-copy">
+              <span class="service-title">{{ service.title }}</span>
+              <span class="service-body">{{ service.body }}</span>
+            </span>
+            <button type="button" class="text-link service-explore" (click)="scrollTo('contact')">
+              Explore
+              <svg lucideArrowRight aria-hidden="true"></svg>
+            </button>
+          </div>
+        }
       }
     </div>
   </section>
@@ -104,17 +118,28 @@
       </p>
     </div>
 
-    <div class="faq-list">
-      @for (item of contentStore.faqs(); track item.question; let i = $index) {
-        <details class="faq-item reveal-item" [style.--i]="i" name="faq">
-          <summary>
-            <span class="faq-question">{{ item.question }}</span>
-            <span class="faq-marker" aria-hidden="true"></span>
-          </summary>
-          <div class="faq-answer">
-            <p>{{ item.answer }}</p>
+    <div class="faq-list" [attr.aria-busy]="contentStore.loading()">
+      @if (contentStore.loading()) {
+        @for (row of [0, 1, 2, 3, 4]; track row) {
+          <div class="faq-item faq-item--skeleton" aria-hidden="true">
+            <div class="faq-skeleton-summary">
+              <span class="skeleton-block skeleton-faq-question"></span>
+              <span class="skeleton-block skeleton-faq-marker"></span>
+            </div>
           </div>
-        </details>
+        }
+      } @else {
+        @for (item of contentStore.faqs(); track item.question; let i = $index) {
+          <details class="faq-item reveal-item" [style.--i]="i" name="faq">
+            <summary>
+              <span class="faq-question">{{ item.question }}</span>
+              <span class="faq-marker" aria-hidden="true"></span>
+            </summary>
+            <div class="faq-answer">
+              <p>{{ item.answer }}</p>
+            </div>
+          </details>
+        }
       }
     </div>
   </section>
