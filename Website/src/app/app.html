@@ -243,12 +243,18 @@
 </main>
 
 <footer class="site-footer">
-  <div class="footer-brand reveal-item" style="--i: 0">
-    <a class="brand" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
-      <span class="brand-mark" aria-hidden="true"></span>
-      {{ contentStore.companyDetails().brandName }}
-    </a>
-    <p>{{ contentStore.companyDetails().tagline }}</p>
+  <div class="footer-brand reveal-item" style="--i: 0" [attr.aria-busy]="contentStore.loading()">
+    @if (contentStore.loading()) {
+      <span class="skeleton-block skeleton-block--invert skeleton-footer-brand" aria-hidden="true"></span>
+      <span class="skeleton-block skeleton-block--invert skeleton-footer-tagline" aria-hidden="true"></span>
+      <span class="skeleton-block skeleton-block--invert skeleton-footer-tagline" aria-hidden="true"></span>
+    } @else {
+      <a class="brand" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
+        <span class="brand-mark" aria-hidden="true"></span>
+        {{ contentStore.companyDetails().brandName }}
+      </a>
+      <p>{{ contentStore.companyDetails().tagline }}</p>
+    }
   </div>
   <div class="reveal-item" style="--i: 1">
     <h2>Company</h2>
@@ -257,64 +263,75 @@
     <button type="button" (click)="scrollTo('faq')">FAQ</button>
     <button type="button" (click)="scrollTo('contact')">Contact</button>
   </div>
-  <div class="reveal-item" style="--i: 2">
+  <div class="reveal-item" style="--i: 2" [attr.aria-busy]="contentStore.loading()">
     <h2>Contact</h2>
-    <a [href]="'mailto:' + contentStore.companyDetails().email">
-      <svg lucideMail aria-hidden="true"></svg>{{ contentStore.companyDetails().email }}
-    </a>
-    <a [href]="telHref(contentStore.companyDetails().phonePrimary)">{{
-      contentStore.companyDetails().phonePrimary
-    }}</a>
-    <a [href]="telHref(contentStore.companyDetails().phoneSecondary)">{{
-      contentStore.companyDetails().phoneSecondary
-    }}</a>
-    <div class="social-links" aria-label="Social links">
-      @if (contentStore.companyDetails().linkedinUrl) {
-        <a [href]="contentStore.companyDetails().linkedinUrl" aria-label="LinkedIn">
-          <svg lucideLink aria-hidden="true"></svg>
-        </a>
-      }
-      @if (contentStore.companyDetails().githubUrl) {
-        <a [href]="contentStore.companyDetails().githubUrl" aria-label="GitHub">
-          <svg lucideCode2 aria-hidden="true"></svg>
-        </a>
-      }
-      @if (contentStore.companyDetails().facebookUrl) {
-        <a [href]="contentStore.companyDetails().facebookUrl" aria-label="Facebook">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path
-              d="M22 12a10 10 0 1 0-11.5 9.9v-7H8v-2.9h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6v1.9h2.8L15 14.9h-2.4v7A10 10 0 0 0 22 12Z"
-            />
-          </svg>
-        </a>
-      }
-      @if (contentStore.companyDetails().instagramUrl) {
-        <a [href]="contentStore.companyDetails().instagramUrl" aria-label="Instagram">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-          </svg>
-        </a>
-      }
-      @if (contentStore.companyDetails().tiktokUrl) {
-        <a [href]="contentStore.companyDetails().tiktokUrl" aria-label="TikTok">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path
-              d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"
-            />
-          </svg>
-        </a>
-      }
-    </div>
+    @if (contentStore.loading()) {
+      <span class="skeleton-block skeleton-block--invert skeleton-footer-line" aria-hidden="true"></span>
+      <span class="skeleton-block skeleton-block--invert skeleton-footer-line skeleton-footer-line--short" aria-hidden="true"></span>
+      <span class="skeleton-block skeleton-block--invert skeleton-footer-line" aria-hidden="true"></span>
+      <div class="skeleton-social-links" aria-hidden="true">
+        <span class="skeleton-block skeleton-block--invert skeleton-social-icon"></span>
+        <span class="skeleton-block skeleton-block--invert skeleton-social-icon"></span>
+        <span class="skeleton-block skeleton-block--invert skeleton-social-icon"></span>
+      </div>
+    } @else {
+      <a [href]="'mailto:' + contentStore.companyDetails().email">
+        <svg lucideMail aria-hidden="true"></svg>{{ contentStore.companyDetails().email }}
+      </a>
+      <a [href]="telHref(contentStore.companyDetails().phonePrimary)">{{
+        contentStore.companyDetails().phonePrimary
+      }}</a>
+      <a [href]="telHref(contentStore.companyDetails().phoneSecondary)">{{
+        contentStore.companyDetails().phoneSecondary
+      }}</a>
+      <div class="social-links" aria-label="Social links">
+        @if (contentStore.companyDetails().linkedinUrl) {
+          <a [href]="contentStore.companyDetails().linkedinUrl" aria-label="LinkedIn">
+            <svg lucideLink aria-hidden="true"></svg>
+          </a>
+        }
+        @if (contentStore.companyDetails().githubUrl) {
+          <a [href]="contentStore.companyDetails().githubUrl" aria-label="GitHub">
+            <svg lucideCode2 aria-hidden="true"></svg>
+          </a>
+        }
+        @if (contentStore.companyDetails().facebookUrl) {
+          <a [href]="contentStore.companyDetails().facebookUrl" aria-label="Facebook">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M22 12a10 10 0 1 0-11.5 9.9v-7H8v-2.9h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6v1.9h2.8L15 14.9h-2.4v7A10 10 0 0 0 22 12Z"
+              />
+            </svg>
+          </a>
+        }
+        @if (contentStore.companyDetails().instagramUrl) {
+          <a [href]="contentStore.companyDetails().instagramUrl" aria-label="Instagram">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+            </svg>
+          </a>
+        }
+        @if (contentStore.companyDetails().tiktokUrl) {
+          <a [href]="contentStore.companyDetails().tiktokUrl" aria-label="TikTok">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path
+                d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"
+              />
+            </svg>
+          </a>
+        }
+      </div>
+    }
   </div>
 </footer>
 

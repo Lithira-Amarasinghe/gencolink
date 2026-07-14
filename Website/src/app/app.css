@@ -1232,6 +1232,51 @@ textarea {
   text-wrap: pretty;
 }
 
+/* ---------- Footer skeleton (company details from Directus can change) ---------- */
+
+.skeleton-footer-brand {
+  width: 150px;
+  height: 22px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+
+.skeleton-footer-tagline {
+  width: 100%;
+  max-width: 34ch;
+  height: 13px;
+  margin-top: 16px;
+  border-radius: 3px;
+}
+
+.skeleton-footer-tagline + .skeleton-footer-tagline {
+  margin-top: 8px;
+  width: 70%;
+}
+
+.skeleton-footer-line {
+  width: 150px;
+  height: 13px;
+  margin-bottom: 10px;
+  border-radius: 3px;
+}
+
+.skeleton-footer-line--short {
+  width: 118px;
+}
+
+.skeleton-social-links {
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.skeleton-social-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1100px) {
