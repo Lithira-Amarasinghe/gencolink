@@ -118,7 +118,7 @@ location               = "eastus"
 
 # Directus admin
 directus_admin_email   = "admin@gencolink.com"
-directus_admin_password = "StrongPassword123!@#"
+directus_admin_password = "REPLACE_WITH_YOUR_OWN_STRONG_PASSWORD"
 
 # Generate tokens:
 # python -c "import secrets; print(secrets.token_urlsafe(32))"

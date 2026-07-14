@@ -5,7 +5,9 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: ${DB_USER:-pgadmin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      # ':?' (not ':-') for every secret below: compose refuses to start
+      # instead of silently falling back to a known-weak default password.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your environment/.env - no default is provided for security}
       POSTGRES_DB: directus
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -28,15 +30,15 @@ services:
       DB_PORT: 5432
       DB_DATABASE: directus
       DB_USER: ${DB_USER:-pgadmin}
-      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your environment/.env - no default is provided for security}
 
       # Admin account
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@gencolink.com}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in your environment/.env - no default is provided for security}
 
       # Tokens & secrets
-      ADMIN_TOKEN: ${ADMIN_TOKEN:-changeme}
-      JWT_SECRET: ${JWT_SECRET:-changeme}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in your environment/.env - no default is provided for security}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your environment/.env - no default is provided for security}
       JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL:-7d}
 
       # Public URL (for webhooks and email links)

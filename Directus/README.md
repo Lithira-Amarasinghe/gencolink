@@ -33,12 +33,13 @@ This will:
 
 ### 3. Open the admin panel
 
-Go to `http://localhost:8055/admin` and log in with:
+Go to `http://localhost:8055/admin` and log in with the `ADMIN_EMAIL` /
+`ADMIN_PASSWORD` values from your local `.env` (not committed to git — see
+`.env.example` for the format).
 
-- **Email:** admin@gencolink.com
-- **Password:** GencoCMS2025!
-
-> Change the password in `.env` for any shared or production environment.
+> Never commit real credentials to this README or any other tracked file.
+> Rotate `ADMIN_PASSWORD` in `.env` before sharing this environment with
+> anyone, and always use a distinct, generated password for production.
 
 ---
 

@@ -92,16 +92,16 @@ github_branch     = "main"
 
 # PostgreSQL
 db_admin_username = "pgadmin"
-db_admin_password = "SuperSecure123!@#"  # Generate strong password
+db_admin_password = "REPLACE_WITH_YOUR_OWN_STRONG_PASSWORD"
 db_sku            = "B_Standard_B1ms"
 db_storage_gb     = 32
 
 # Directus
 directus_image              = "gencolinkprodeus.azurecr.io/directus:latest"
 directus_admin_email        = "admin@gencolink.com"
-directus_admin_password     = "AnotherSecure456!@#"
-directus_admin_token        = "$(openssl rand -base64 32)"  # Generate via: python -c "import secrets; print(secrets.token_urlsafe(32))"
-directus_jwt_secret         = "$(openssl rand -base64 32)"
+directus_admin_password     = "REPLACE_WITH_YOUR_OWN_STRONG_PASSWORD"
+directus_admin_token        = "REPLACE_WITH_GENERATED_TOKEN"  # generate via: python -c "import secrets; print(secrets.token_urlsafe(32))"
+directus_jwt_secret         = "REPLACE_WITH_GENERATED_SECRET"
 
 # Email
 azure_communication_email_domain = "https://gencolink.communication.azure.com/"

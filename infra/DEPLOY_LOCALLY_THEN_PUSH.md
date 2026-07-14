@@ -54,7 +54,14 @@ mv variables-free-tier.tf variables.tf
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-### **Step 1.3: Generate Directus Tokens**
+> **Outdated section — kept for historical reference only.** The current
+> `main.tf` no longer takes `directus_admin_token` / `directus_jwt_secret` as
+> input variables at all: Terraform generates and manages them for you via
+> `random_password` resources and pushes them straight to Key Vault. There is
+> nothing to generate or paste manually anymore — skip straight to filling in
+> `terraform.tfvars` from `terraform.tfvars.example`.
+
+### **Step 1.3 (legacy): Generate Directus Tokens**
 
 ```bash
 # Generate Token 1 (Admin Token)
@@ -68,7 +75,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 **Save both tokens** — you'll paste them below.
 
-### **Step 1.4: Edit terraform.tfvars**
+### **Step 1.4 (legacy): Edit terraform.tfvars**
 
 Open the file and fill in:
 
@@ -83,11 +90,11 @@ location     = "eastus"
 
 # Directus admin credentials
 directus_admin_email    = "admin@gencolink.com"
-directus_admin_password = "YourStrongPassword123!@#"
+directus_admin_password = "REPLACE_WITH_YOUR_OWN_STRONG_PASSWORD"
 
 # Paste your generated tokens here
-directus_admin_token    = "7rXUQwA-LIwq8oLaJi6wWTm2hFCluByI6J4sGhoHoP0"
-directus_jwt_secret     = "qAcFJcTSylEV9WGo8oMpOJ3a_MPDCigx7leECWSQ4Fo"
+directus_admin_token    = "REPLACE_WITH_GENERATED_TOKEN"
+directus_jwt_secret     = "REPLACE_WITH_GENERATED_SECRET"
 
 # Docker (leave empty for public images)
 docker_registry_username = ""
