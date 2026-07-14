@@ -23,9 +23,18 @@ import { SiteContentService } from '../site-content.service';
 })
 export class HeroVideoComponent implements AfterViewInit, OnDestroy {
   private static readonly frameCount = 192;
-  private static readonly framePath = '/assets/hero-story-frames/frame-';
-  private static readonly frameExtension = 'png';
-  private static readonly preloadConcurrency = 6;
+  // WebP frames run ~93% smaller than the original PNGs (122MB -> ~8MB for the
+  // full 192-frame desktop set) - the dominant fix for hero scroll jank and
+  // slow-connection load time. A separate 720x405 set serves narrow viewports
+  // so phones aren't paying for 1280x720 detail they can't even display.
+  private static readonly desktopFramePath = '/assets/hero-story-frames/frame-';
+  private static readonly mobileFramePath = '/assets/hero-story-frames-mobile/frame-';
+  private static readonly mobileBreakpointPx = 768;
+  private static readonly frameExtension = 'webp';
+  // WebP frames are roughly 10x lighter than the old PNGs, so more can load
+  // in parallel without saturating a slow connection the way 6 concurrent
+  // ~640KB PNG fetches used to.
+  private static readonly preloadConcurrency = 10;
 
   /**
    * Scroll distance the pinned hero occupies, in viewport heights. Sets the frame pace.
@@ -54,6 +63,10 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
   private lastStickyWidth = -1;
   private lastStickyHeight = -1;
   private refreshTimer?: ReturnType<typeof setTimeout>;
+  // Decided once at init from viewport width - not reactive to resize/rotate,
+  // since mid-sequence swapping the whole frame set would require re-fetching
+  // and re-decoding everything already loaded.
+  private framePath = HeroVideoComponent.desktopFramePath;
 
   constructor(
     @Inject(PLATFORM_ID) private readonly platformId: object,
@@ -73,6 +86,10 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
     }
 
     gsap.registerPlugin(ScrollTrigger);
+
+    this.framePath = window.matchMedia(`(max-width: ${HeroVideoComponent.mobileBreakpointPx}px)`).matches
+      ? HeroVideoComponent.mobileFramePath
+      : HeroVideoComponent.desktopFramePath;
 
     this.ngZone.runOutsideAngular(() => {
       this.resizeObserver = new ResizeObserver(() => this.resizeCanvas());
@@ -359,9 +376,7 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
   }
 
   private getFrameUrl(index: number): string {
-    return `${HeroVideoComponent.framePath}${String(index + 1).padStart(4, '0')}.${
-      HeroVideoComponent.frameExtension
-    }`;
+    return `${this.framePath}${String(index + 1).padStart(4, '0')}.${HeroVideoComponent.frameExtension}`;
   }
 
   private markFramesReady(): void {
