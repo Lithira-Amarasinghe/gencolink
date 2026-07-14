@@ -150,16 +150,20 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
     this.drawFrame(0, true);
 
     this.animationContext = gsap.context(() => {
-      gsap.set(introItems, { autoAlpha: 1, x: 0, y: 0, filter: 'blur(0px)' });
-      gsap.set(solutionsPanel, { autoAlpha: 0, x: 38, y: 22, filter: 'blur(8px)' });
-      gsap.set(solutionsItems, { autoAlpha: 0, x: 18, y: 14, filter: 'blur(6px)' });
+      // Reveals use only opacity + transform (both GPU-composited). Animating
+      // filter: blur() on scroll-scrub forces a full-layer re-rasterization on
+      // every scroll frame - the primary source of hero scroll jank - and with
+      // slightly larger travel distances the motion reads just as soft without it.
+      gsap.set(introItems, { autoAlpha: 1, x: 0, y: 0 });
+      gsap.set(solutionsPanel, { autoAlpha: 0, x: 48, y: 28 });
+      gsap.set(solutionsItems, { autoAlpha: 0, x: 24, y: 18 });
       gsap.set(canvas, { autoAlpha: 1 });
 
       if (reducedMotion) {
         gsap.set(canvas, { autoAlpha: 0.94 });
         gsap.set(introPanel, { autoAlpha: 0 });
-        gsap.set(solutionsPanel, { autoAlpha: 1, x: 0, y: 0, filter: 'blur(0px)' });
-        gsap.set(solutionsItems, { autoAlpha: 1, x: 0, y: 0, filter: 'blur(0px)' });
+        gsap.set(solutionsPanel, { autoAlpha: 1, x: 0, y: 0 });
+        gsap.set(solutionsItems, { autoAlpha: 1, x: 0, y: 0 });
         return;
       }
 
@@ -209,9 +213,8 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
           introItems,
           {
             autoAlpha: 0,
-            x: -38,
-            y: -20,
-            filter: 'blur(5px)',
+            x: -48,
+            y: -26,
             duration: 0.22,
             ease: 'power2.inOut',
             stagger: 0.075,
@@ -227,7 +230,6 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
             autoAlpha: 1,
             x: 0,
             y: 0,
-            filter: 'blur(0px)',
             duration: 0.15,
             ease: 'power2.out',
           },
@@ -239,7 +241,6 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
             autoAlpha: 1,
             x: 0,
             y: 0,
-            filter: 'blur(0px)',
             duration: 0.16,
             ease: 'power2.out',
             stagger: 0.045,
@@ -255,9 +256,8 @@ export class HeroVideoComponent implements AfterViewInit, OnDestroy {
           solutionsPanel,
           {
             autoAlpha: 0,
-            x: -24,
-            y: -14,
-            filter: 'blur(5px)',
+            x: -30,
+            y: -18,
             duration: 0.10,
             ease: 'power2.out',
           },

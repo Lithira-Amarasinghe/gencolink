@@ -41,7 +41,7 @@
   width: min(640px, 44vw);
   transform: translateY(-50%);
   font-family: var(--font-body);
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
 }
 
 .hero-eyebrow {
@@ -74,12 +74,12 @@
 
 .hero-copy-panel {
   width: 100%;
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
 }
 
 .hero-copy-intro {
   position: relative;
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
 }
 
 .hero-copy-solutions {
@@ -89,7 +89,7 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(22px);
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
   width: 100%;
 }
 
@@ -103,13 +103,14 @@
   font-weight: 700;
   line-height: 1.03;
   letter-spacing: -0.02em;
+  /* Near-glow + legibility layers only. The former 64px/120px glow layers were
+     dropped: their wide blur radii are the most expensive to rasterize and read
+     as almost nothing over the light hero. */
   text-shadow:
     0 0 8px rgba(220, 225, 235, 0.7),
-    0 0 16px rgba(210, 220, 235, 0.6),
-    0 0 32px rgba(200, 215, 235, 0.5),
-    0 0 64px rgba(190, 210, 235, 0.4),
-    0 0 120px rgba(180, 205, 235, 0.3),
-    0 2px 22px rgba(255, 255, 255, 0.70),
+    0 0 18px rgba(210, 220, 235, 0.55),
+    0 0 36px rgba(200, 215, 235, 0.42),
+    0 2px 22px rgba(255, 255, 255, 0.7),
     0 1px 3px rgba(11, 19, 48, 0.35);
 }
 
@@ -133,14 +134,13 @@
   font-size: clamp(17px, 1.35vw, 20px);
   font-weight: 500;
   line-height: 1.65;
+  /* Same trim as the headings: dropped the 48px/100px wide-blur glow layers. */
   text-shadow:
     0 0 6px rgba(220, 225, 235, 0.6),
-    0 0 12px rgba(210, 220, 235, 0.5),
-    0 0 24px rgba(200, 215, 235, 0.4),
-    0 0 48px rgba(190, 210, 235, 0.3),
-    0 0 100px rgba(180, 205, 235, 0.2),
+    0 0 14px rgba(210, 220, 235, 0.46),
+    0 0 28px rgba(200, 215, 235, 0.32),
     0 2px 18px rgba(255, 255, 255, 0.65),
-    0 1px 3px rgba(11, 19, 48, 0.30);
+    0 1px 3px rgba(11, 19, 48, 0.3);
 }
 
 .hero-copy-solutions > p {
