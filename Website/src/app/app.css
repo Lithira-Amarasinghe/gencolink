@@ -1037,6 +1037,10 @@ textarea {
   background: var(--white);
   color: var(--navy);
   font-family: var(--font-body);
+  /* Explicit 16px: fields otherwise inherit the label's 12px mono caption size,
+     which is hard to read AND makes iOS Safari auto-zoom into every focused
+     field (it zooms any input under 16px). */
+  font-size: 16px;
   transition:
     border-color 280ms var(--ease-out-quart),
     box-shadow 280ms var(--ease-out-quart),
@@ -1374,6 +1378,19 @@ textarea {
   }
 }
 
+@media (max-width: 900px) {
+  /* 3 columns of sub-220px fields read cramped once the contact layout is
+     single-column; 2-up keeps comfortable field widths on small tablets. */
+  form {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .message-field,
+  .submit-button {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 720px) {
   .site-header {
     min-height: 72px;
@@ -1386,6 +1403,77 @@ textarea {
 
   .mobile-nav {
     top: 72px;
+  }
+
+  .section-shell {
+    width: min(100% - 40px, 1320px);
+  }
+}
+
+/* Phone layout. These stacking rules used to live in the 335px block, which
+   real phones (360-430px wide) never reached - they were getting the desktop
+   3-column form and service grid. 640px is the standard phone ceiling. */
+@media (max-width: 640px) {
+  .section-heading.split,
+  .section-heading.inline {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .section-heading {
+    margin-bottom: 42px;
+  }
+
+  form {
+    grid-template-columns: 1fr;
+  }
+
+  .message-field {
+    grid-column: auto;
+  }
+
+  .service-row {
+    grid-template-columns: 40px 1fr;
+    row-gap: 10px;
+    padding: 22px 0;
+  }
+
+  .service-explore,
+  .skeleton-action {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .service-index {
+    font-size: 30px;
+  }
+
+  .skeleton-index {
+    width: 34px;
+    height: 28px;
+  }
+
+  .value-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .site-footer {
+    grid-template-columns: 1fr;
+    padding: 44px 24px;
+  }
+
+  .services-section,
+  .faq-section {
+    padding: 64px 0;
+  }
+
+  .why-section {
+    padding: 68px 0;
+  }
+
+  .contact-section {
+    padding: 54px 0;
   }
 }
 
@@ -1458,8 +1546,8 @@ textarea {
 
   .nav-cta {
     padding: 0 10px;
-    font-size: 10px;
-    min-height: 36px;
+    font-size: 11px;
+    min-height: 40px;
     white-space: nowrap;
   }
 
@@ -1510,22 +1598,20 @@ textarea {
 
   .nav-cta {
     grid-column: 3;
-    padding: 0 8px;
-    font-size: 9px;
-    min-height: 32px;
+    padding: 0 9px;
+    font-size: 10px;
+    min-height: 38px;
     white-space: nowrap;
   }
 
   .nav-cta svg {
-    width: 10px;
-    height: 10px;
     display: none;
   }
 
   .menu-button {
     grid-column: 4;
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-width: 0.5px;
   }
 
@@ -1541,13 +1627,7 @@ textarea {
   }
 
   .section-shell {
-    width: min(100% - 16px, 1320px);
-  }
-
-  .section-heading.split,
-  .section-heading.inline {
-    align-items: stretch;
-    flex-direction: column;
+    width: min(100% - 24px, 1320px);
   }
 
   .primary-button,
@@ -1555,52 +1635,8 @@ textarea {
     width: 100%;
   }
 
-  .services-section,
-  .faq-section {
-    padding: 64px 0;
-  }
-
-  .why-section {
-    padding: 68px 0;
-  }
-
-  .value-grid,
-  .site-footer,
-  form {
-    grid-template-columns: 1fr;
-  }
-
-  .service-row {
-    grid-template-columns: 40px 1fr;
-    row-gap: 10px;
-    padding: 22px 0;
-  }
-
-  .service-explore,
-  .skeleton-action {
-    grid-column: 2;
-    justify-self: start;
-  }
-
-  .service-index {
-    font-size: 30px;
-  }
-
-  .skeleton-index {
-    width: 34px;
-    height: 28px;
-  }
-
-  .contact-section {
-    padding: 54px 0;
-  }
-
-  .message-field {
-    grid-column: auto;
-  }
-
   .site-footer {
-    padding: 44px 24px;
+    padding: 40px 18px;
   }
 }
 
