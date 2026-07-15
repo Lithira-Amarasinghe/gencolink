@@ -29,8 +29,10 @@ Function → ACS email.
    Add these three as **GitHub repo secrets manually** (Terraform creates all
    the others): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
 3. **GitHub PAT** for Terraform's `github` provider (fine-grained, this repo,
-   Actions read/write). Prefer supplying it via the `GITHUB_TOKEN` env var
-   rather than putting it in `terraform.tfvars`.
+   Actions read/write) - a token you generate yourself, distinct from GitHub
+   Actions' own auto-issued `secrets.GITHUB_TOKEN` used inside workflows.
+   Export it as `GITHUB_TOKEN` in the shell you run `terraform apply` from
+   (the provider reads it automatically); don't put it in `terraform.tfvars`.
 4. **Azure Communication Services**: the ACS resource + a verified email domain
    (DNS records). ACS is *not* managed by Terraform — it must exist first, and
    its endpoint/resource-name go in `terraform.tfvars`.

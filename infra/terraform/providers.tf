@@ -37,8 +37,13 @@ provider "azurerm" {
   }
 }
 
-# Auth: personal access token with `repo` scope, passed via var.github_repo_token
+# Auth: personal access token with `repo` scope. Prefer the GITHUB_TOKEN
+# environment variable (the provider reads it automatically) over
+# var.github_repo_token, so the token never has to sit in terraform.tfvars.
+# token = null here means "not explicitly set" - Terraform then lets the
+# provider fall back to GITHUB_TOKEN. var.github_repo_token remains as an
+# explicit override only for workflows that genuinely need it in tfvars.
 provider "github" {
-  token = var.github_repo_token
+  token = var.github_repo_token != "" ? var.github_repo_token : null
   owner = var.github_owner
 }

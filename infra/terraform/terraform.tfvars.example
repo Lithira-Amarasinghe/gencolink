@@ -29,9 +29,10 @@ sql_database_name  = "directus"
 
 # GitHub integration (Static Web App + Actions secrets sync)
 # PAT needs 'repo' scope (classic) or Actions read/write (fine-grained).
-# Prefer supplying this via the GITHUB_TOKEN env var instead of this file.
-github_repo_token = "YOUR_GITHUB_PAT_HERE"
-github_repo_url   = "https://github.com/yourname/gencolink"
+# Export it as the GITHUB_TOKEN environment variable before running
+# `terraform apply` - the provider reads it automatically (see providers.tf).
+# Leave github_repo_token unset here; it exists only as a fallback override.
+github_repo_url = "https://github.com/yourname/gencolink"
 github_owner      = "yourname"
 github_repository = "gencolink"
 github_branch     = "master"
