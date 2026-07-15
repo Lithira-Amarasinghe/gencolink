@@ -19,13 +19,20 @@ terraform {
     }
   }
 
-  # Uncomment after first apply to store state in Azure
-  # backend "azurerm" {
-  #   resource_group_name  = "gencolink-rg-tfstate"
-  #   storage_account_name = "gencolinktfstate"
-  #   container_name       = "tfstate"
-  #   key                  = "prod.tfstate"
-  # }
+  # Remote state, encrypted at rest in Azure Storage. use_azuread_auth means
+  # Terraform authenticates with the same Azure identity already used for
+  # `az login` / the azurerm provider - no storage account key to generate,
+  # rotate, or store anywhere. The storage account (gencolink-rg-tfstate
+  # resource group) is bootstrapped by hand via the Azure CLI, deliberately
+  # outside this Terraform config, to avoid the chicken-and-egg problem of
+  # state storage depending on itself.
+  backend "azurerm" {
+    resource_group_name  = "gencolink-rg-tfstate"
+    storage_account_name = "gencolinktfstate"
+    container_name       = "tfstate"
+    key                  = "prod.tfstate"
+    use_azuread_auth     = true
+  }
 }
 
 provider "azurerm" {
