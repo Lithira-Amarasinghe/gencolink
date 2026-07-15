@@ -2,13 +2,13 @@ locals {
   app_name = "${var.project_name}-${var.environment}"
 }
 
-# App Service Plan (Free tier - F1)
+# App Service Plan (shared by Directus and the Functions app; B1 minimum)
 resource "azurerm_service_plan" "main" {
   name                = "${local.app_name}-asp"
   location            = var.location
   resource_group_name = var.resource_group_name
   os_type             = "Linux"
-  sku_name            = var.sku  # F1 = Free tier
+  sku_name            = var.sku
 
   tags = var.tags
 }
@@ -28,7 +28,7 @@ resource "azurerm_linux_web_app" "main" {
   app_settings = merge(
     var.directus_config,
     {
-      WEBSITES_PORT                       = "8055" # Directus listens on 8055 by default in the container
+      WEBSITES_PORT                       = "8055"  # Directus listens on 8055 by default in the container
       WEBSITES_ENABLE_APP_SERVICE_STORAGE = "false" # Per Directus's official Azure Web Apps guide: must stay off or startup breaks
     },
     {
@@ -49,8 +49,8 @@ resource "azurerm_linux_web_app" "main" {
 
     # Health check configuration - /server/ping (not /server/health) because
     # Directus 12.x's public role denies /server/health by default
-    health_check_path              = "/server/ping"
-    health_check_eviction_time_in_min = 2  # Minimum value required by Azure
+    health_check_path                 = "/server/ping"
+    health_check_eviction_time_in_min = 2 # Minimum value required by Azure
   }
 
   # System Assigned Managed Identity
@@ -76,9 +76,9 @@ resource "azurerm_role_assignment" "app_service_kv_secrets_user" {
 
 # RBAC: Storage Blob Data Contributor
 resource "azurerm_role_assignment" "app_service_storage" {
-  scope              = var.storage_account_id
+  scope                = var.storage_account_id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id       = azurerm_linux_web_app.main.identity[0].principal_id
+  principal_id         = azurerm_linux_web_app.main.identity[0].principal_id
 
   depends_on = [azurerm_linux_web_app.main]
 }

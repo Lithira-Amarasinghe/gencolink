@@ -38,21 +38,21 @@ output "azure_swa_deployment_token" {
 output "resource_locations" {
   description = "Where each resource is deployed (location-independent naming)"
   value = {
-    directus  = local.directus_location
-    frontend  = local.frontend_location
-    storage   = local.storage_location
-    keyvault  = local.keyvault_location
+    directus = local.directus_location
+    frontend = local.frontend_location
+    storage  = local.storage_location
+    keyvault = local.keyvault_location
   }
 }
 
 output "resource_names" {
   description = "All resource names (clean, location-independent)"
   value = {
-    app_name           = local.app_name
-    directus_app       = var.enable_app_service ? module.app_service[0].app_service_name : null
-    storage_account    = azurerm_storage_account.content.name
-    key_vault          = module.key_vault.vault_name
-    static_web_app     = module.static_web_app.name
+    app_name        = local.app_name
+    directus_app    = var.enable_app_service ? module.app_service[0].app_service_name : null
+    storage_account = azurerm_storage_account.content.name
+    key_vault       = module.key_vault.vault_name
+    static_web_app  = module.static_web_app.name
   }
 }
 
@@ -64,20 +64,20 @@ output "deployment_summary" {
 
     # New: Location info
     locations = {
-      directus  = local.directus_location
-      frontend  = local.frontend_location
-      storage   = local.storage_location
-      keyvault  = local.keyvault_location
+      directus = local.directus_location
+      frontend = local.frontend_location
+      storage  = local.storage_location
+      keyvault = local.keyvault_location
     }
 
     # New: Architecture info
-    architecture = "Location-independent design: Services can be deployed to different regions"
-    secrets_synced_to  = ["Azure Key Vault", "GitHub Actions Secrets"]
+    architecture      = "Location-independent design: Services can be deployed to different regions"
+    secrets_synced_to = ["Azure Key Vault", "GitHub Actions Secrets"]
   }
 }
 
 output "app_service_url" {
-  description = "App Service Directus URL (Free tier F1 - 60 min/day limit)"
+  description = "App Service Directus URL"
   value       = var.enable_app_service ? "https://${module.app_service[0].app_service_fqdn}" : "App Service disabled (set enable_app_service = true)"
 }
 
@@ -87,14 +87,12 @@ output "app_service_admin_url" {
 }
 
 output "app_service_status" {
-  description = "App Service deployment status and warnings"
+  description = "App Service deployment status"
   value = var.enable_app_service ? {
-    status              = "Deployed"
-    sku                 = var.app_service_sku
-    daily_compute_limit = "60 minutes (Free tier F1)"
-    warning             = "Free tier only viable for testing/demo (not 24/7 production)"
-    endpoint            = "https://${module.app_service[0].app_service_fqdn}"
-  } : {
+    status   = "Deployed"
+    sku      = var.app_service_sku
+    endpoint = "https://${module.app_service[0].app_service_fqdn}"
+    } : {
     status  = "Disabled"
     message = "Set enable_app_service = true to enable"
   }

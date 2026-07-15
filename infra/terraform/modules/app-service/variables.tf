@@ -20,8 +20,8 @@ variable "environment" {
 
 variable "sku" {
   type        = string
-  description = "App Service Plan SKU (F1=free, B1=basic)"
-  default     = "F1"
+  description = "App Service Plan SKU (B1 minimum; F1/Free is unusable for Directus)"
+  default     = "B1"
 }
 
 variable "key_vault_id" {
