@@ -480,8 +480,12 @@ resource "null_resource" "directus_bootstrap" {
   count = var.enable_app_service ? 1 : 0
 
   triggers = {
+    # function_url only, not function_key: the Flow operation is written with
+    # the {{$env.AZURE_FUNCTION_KEY}} placeholder (never the literal key -
+    # see FLOW_OPERATION_OPTIONS in setup.js), so a key rotation doesn't
+    # actually change anything this script writes. Tracking it here would
+    # only store the raw secret in this resource's state for no benefit.
     function_url      = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
-    function_key      = data.azurerm_function_app_host_keys.main[0].default_function_key
     setup_script_hash = filesha1("${path.module}/../../Directus/setup.js")
     package_json_hash = filesha1("${path.module}/../../Directus/package.json")
   }
