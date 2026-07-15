@@ -3,11 +3,11 @@ locals {
   app_name = "${var.project_name}-${var.environment}"
 
   # Resolve service-specific locations (with fallbacks to primary)
-  directus_location  = coalesce(var.directus_location, var.primary_location)
-  frontend_location  = coalesce(var.frontend_location, var.primary_location)
-  storage_location   = coalesce(var.storage_location, var.primary_location)
-  sql_location       = coalesce(var.sql_location, var.primary_location)
-  keyvault_location  = coalesce(var.keyvault_location, var.primary_location)
+  directus_location = coalesce(var.directus_location, var.primary_location)
+  frontend_location = coalesce(var.frontend_location, var.primary_location)
+  storage_location  = coalesce(var.storage_location, var.primary_location)
+  sql_location      = coalesce(var.sql_location, var.primary_location)
+  keyvault_location = coalesce(var.keyvault_location, var.primary_location)
 
   # Enterprise tagging strategy
   common_tags = merge(
@@ -139,14 +139,14 @@ resource "azurerm_storage_account" "content" {
   # firewall).
   network_rules {
     default_action = "Deny"
-    bypass          = ["AzureServices"]
-    ip_rules = var.enable_app_service ? split(",", data.azurerm_linux_web_app.existing[0].outbound_ip_addresses) : []
+    bypass         = ["AzureServices"]
+    ip_rules       = var.enable_app_service ? split(",", data.azurerm_linux_web_app.existing[0].outbound_ip_addresses) : []
   }
 }
 
 resource "azurerm_storage_container" "directus_uploads" {
-  name                  = "directus-uploads"
-  storage_account_id    = azurerm_storage_account.content.id
+  name               = "directus-uploads"
+  storage_account_id = azurerm_storage_account.content.id
   # private (not "blob"): the website doesn't reference this container at
   # all (confirmed - no code references blob URLs), and Directus serves
   # files through its own /assets endpoint using its Managed Identity RBAC
@@ -179,13 +179,13 @@ resource "azurerm_mssql_server" "directus" {
 }
 
 resource "azurerm_mssql_database" "directus" {
-  name           = var.sql_database_name
-  server_id      = azurerm_mssql_server.directus.id
-  collation      = "SQL_Latin1_General_CP1_CI_AS"
-  license_type   = "BasePrice"
-  max_size_gb    = 2
-  sku_name       = "Basic"
-  tags           = local.sql_tags
+  name         = var.sql_database_name
+  server_id    = azurerm_mssql_server.directus.id
+  collation    = "SQL_Latin1_General_CP1_CI_AS"
+  license_type = "BasePrice"
+  max_size_gb  = 2
+  sku_name     = "Basic"
+  tags         = local.sql_tags
 }
 
 # SQL Server firewall: scoped to App Service's specific outbound IPs instead
@@ -210,7 +210,7 @@ module "key_vault" {
   location            = local.keyvault_location
   project_name        = var.project_name
   environment         = var.environment
-  location_short      = ""  # Deprecated: location-independent naming
+  location_short      = "" # Deprecated: location-independent naming
   tags                = local.keyvault_tags
 }
 
@@ -274,7 +274,7 @@ module "static_web_app" {
   location          = local.frontend_location
   project_name      = var.project_name
   environment       = var.environment
-  location_short    = ""  # Deprecated: location-independent naming
+  location_short    = "" # Deprecated: location-independent naming
   github_repo_token = var.github_repo_token
   github_repo_url   = var.github_repo_url
   github_branch     = var.github_branch
@@ -289,7 +289,7 @@ module "app_service" {
   source = "./modules/app-service"
 
   resource_group_name = data.azurerm_resource_group.main.name
-  location            = coalesce(var.app_service_location, var.primary_location)  # App Service specific location
+  location            = coalesce(var.app_service_location, var.primary_location) # App Service specific location
   project_name        = var.project_name
   environment         = var.environment
   sku                 = var.app_service_sku
@@ -301,8 +301,8 @@ module "app_service" {
   storage_account_id = azurerm_storage_account.content.id
 
   directus_config = {
-    HOST                         = "0.0.0.0" # explicit - must bind all interfaces for App Service's warmup probe to reach it
-    PORT                         = "8055"    # must match WEBSITES_PORT in the app-service module
+    HOST                        = "0.0.0.0" # explicit - must bind all interfaces for App Service's warmup probe to reach it
+    PORT                        = "8055"    # must match WEBSITES_PORT in the app-service module
     DB_CLIENT                   = "mssql"
     DB_HOST                     = azurerm_mssql_server.directus.fully_qualified_domain_name
     DB_PORT                     = "1433"
@@ -313,7 +313,7 @@ module "app_service" {
     ADMIN_EMAIL                 = var.directus_admin_email
     JWT_REFRESH_TOKEN_TTL       = "${var.directus_refresh_token_ttl}d"
     PUBLIC_URL                  = "https://${local.app_name}-appservice.azurewebsites.net"
-    CORS_ENABLED                = "true"  # required - CORS_ORIGIN alone is ignored without this
+    CORS_ENABLED                = "true" # required - CORS_ORIGIN alone is ignored without this
     CORS_ORIGIN                 = "https://${module.static_web_app.default_host_name}"
     RATE_LIMITER_ENABLED        = "true"
     RATE_LIMITER_STORE          = "memory"
@@ -331,21 +331,21 @@ module "app_service" {
 
     # Lets the "Notify on Contact Submission" Flow reference these as
     # {{$env.AZURE_FUNCTION_URL}} / {{$env.AZURE_FUNCTION_KEY}} instead of
-    # hardcoded values - kept in sync automatically (see null_resource
-    # .sync_directus_flow below).
+    # hardcoded values - kept in sync automatically (see
+    # null_resource.directus_bootstrap below).
     FLOWS_ENV_ALLOW_LIST = "AZURE_FUNCTION_URL,AZURE_FUNCTION_KEY"
     AZURE_FUNCTION_URL   = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
   }
 
   # Sensitive values
   directus_secrets = {
-    ADMIN_PASSWORD          = random_password.directus_admin_password.result
-    ADMIN_TOKEN             = random_password.directus_admin_token.result
-    JWT_SECRET              = random_password.directus_jwt_secret.result
-    SECRET                  = random_password.directus_secret.result
-    DB_PASSWORD             = azurerm_mssql_server.directus.administrator_login_password
+    ADMIN_PASSWORD            = random_password.directus_admin_password.result
+    ADMIN_TOKEN               = random_password.directus_admin_token.result
+    JWT_SECRET                = random_password.directus_jwt_secret.result
+    SECRET                    = random_password.directus_secret.result
+    DB_PASSWORD               = azurerm_mssql_server.directus.administrator_login_password
     STORAGE_AZURE_ACCOUNT_KEY = azurerm_storage_account.content.primary_access_key
-    AZURE_FUNCTION_KEY      = data.azurerm_function_app_host_keys.main[0].default_function_key
+    AZURE_FUNCTION_KEY        = data.azurerm_function_app_host_keys.main[0].default_function_key
   }
 
   tags       = local.directus_tags
@@ -455,22 +455,28 @@ resource "azurerm_key_vault_secret" "azure_function_key" {
   key_vault_id = module.key_vault.vault_id
 }
 
-# Keeps the Directus Flow's webhook operation pointed at
-# {{$env.AZURE_FUNCTION_URL}} / {{$env.AZURE_FUNCTION_KEY}} (set as App
-# Service settings below) instead of a hardcoded URL/key - identical Flow
-# config works in every environment, and `terraform apply` re-syncs it
-# automatically whenever the Function's key/URL changes. No manual editing
-# in the Directus UI.
-resource "null_resource" "sync_directus_flow" {
+# Runs Directus/setup.js against the deployed instance on every apply:
+# creates every content collection (if missing), grants public read/create
+# permissions, seeds initial content (only if empty), and creates/re-syncs the
+# "Notify on Contact Submission" Flow so its webhook always points at
+# {{$env.AZURE_FUNCTION_URL}} / {{$env.AZURE_FUNCTION_KEY}} instead of a
+# hardcoded URL/key. Fully idempotent (every step in setup.js skips work
+# that's already done) - no manual bootstrap step, no manual Flow creation,
+# no manual permission grant in the Directus UI. Zero Azure cost: this runs
+# locally on the machine executing `terraform apply`, not as an Azure
+# resource.
+resource "null_resource" "directus_bootstrap" {
   count = var.enable_app_service ? 1 : 0
 
   triggers = {
-    function_url = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
-    function_key = data.azurerm_function_app_host_keys.main[0].default_function_key
+    function_url         = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
+    function_key         = data.azurerm_function_app_host_keys.main[0].default_function_key
+    directus_admin_token = random_password.directus_admin_token.result
+    setup_script_hash    = filesha1("${path.module}/../../Directus/setup.js")
   }
 
   provisioner "local-exec" {
-    command     = "node \"${path.module}/scripts/sync-directus-flow.js\""
+    command     = "node \"${path.module}/../../Directus/setup.js\""
     interpreter = ["bash", "-c"]
     environment = {
       DIRECTUS_URL         = module.app_service[0].app_service_url
@@ -525,17 +531,17 @@ resource "github_actions_secret" "azure_swa_deployment_token" {
 
 # App Service deployment secrets
 resource "github_actions_secret" "azure_appservice_name" {
-  count           = var.enable_app_service ? 1 : 0
-  repository      = var.github_repository
-  secret_name     = "AZURE_APPSERVICE_NAME"
-  value           = module.app_service[0].app_service_name
+  count       = var.enable_app_service ? 1 : 0
+  repository  = var.github_repository
+  secret_name = "AZURE_APPSERVICE_NAME"
+  value       = module.app_service[0].app_service_name
 }
 
 resource "github_actions_secret" "azure_appservice_url" {
-  count           = var.enable_app_service ? 1 : 0
-  repository      = var.github_repository
-  secret_name     = "AZURE_APPSERVICE_URL"
-  value           = module.app_service[0].app_service_url
+  count       = var.enable_app_service ? 1 : 0
+  repository  = var.github_repository
+  secret_name = "AZURE_APPSERVICE_URL"
+  value       = module.app_service[0].app_service_url
 }
 
 # frontend.yml injects this into the built site's runtime-config.js at

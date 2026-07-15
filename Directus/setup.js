@@ -1,26 +1,42 @@
 #!/usr/bin/env node
 /**
- * Directus bootstrap — run once after `docker compose up -d`.
+ * Directus bootstrap — run once after `docker compose up -d`, or automatically
+ * by Terraform (null_resource.directus_bootstrap) after every `terraform apply`
+ * against the deployed Azure Directus instance.
  *
- * Creates the `services` and `products` collections, grants public read access,
- * and seeds initial content. Safe to re-run (skips existing items).
+ * Creates every content collection, grants public read (+ create on
+ * contact_submissions), seeds initial content, and creates/re-syncs the
+ * "Notify on Contact Submission" Flow. Fully idempotent — safe to re-run any
+ * number of times; every step skips work that's already done.
  *
  * Usage:
  *   node setup.js
  *
- * Optional env overrides:
- *   DIRECTUS_URL     (default: http://localhost:8055)
- *   ADMIN_EMAIL      (default: admin@gencolink.com)
- *   ADMIN_PASSWORD   (default: GencoCMS2025!)
+ * Auth (pick one):
+ *   DIRECTUS_ADMIN_TOKEN           static API token — skips the login call.
+ *                                   Used by Terraform (Directus's ADMIN_TOKEN
+ *                                   env var provisions this automatically).
+ *   ADMIN_EMAIL / ADMIN_PASSWORD   interactive/local login (default flow).
+ *
+ * Other env overrides:
+ *   DIRECTUS_URL       (default: http://localhost:8055)
+ *   AZURE_FUNCTION_URL / AZURE_FUNCTION_KEY
+ *     Not read by this script directly — the Flow's webhook operation always
+ *     points at the Directus-side placeholders {{$env.AZURE_FUNCTION_URL}} /
+ *     {{$env.AZURE_FUNCTION_KEY}}, so Directus itself resolves them from its
+ *     own environment (see FLOWS_ENV_ALLOW_LIST in both Directus/.env and
+ *     Terraform's directus_config). Same Flow config works unchanged in
+ *     every environment.
  */
 
 const BASE = (process.env.DIRECTUS_URL ?? 'http://localhost:8055').replace(/\/$/, '');
 const EMAIL = process.env.ADMIN_EMAIL ?? 'admin@gencolink.com';
 const PASS = process.env.ADMIN_PASSWORD;
+const STATIC_TOKEN = process.env.DIRECTUS_ADMIN_TOKEN;
 
-// Fail fast in production if password not provided
-if (!PASS && !process.env.DIRECTUS_URL) {
-  throw new Error('ADMIN_PASSWORD environment variable is required');
+// Fail fast if we have no way to authenticate at all.
+if (!STATIC_TOKEN && !PASS && !process.env.DIRECTUS_URL) {
+  throw new Error('Set DIRECTUS_ADMIN_TOKEN, or ADMIN_PASSWORD, to authenticate.');
 }
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
@@ -309,6 +325,10 @@ async function waitForDirectus(maxWaitMs = 60_000) {
 }
 
 async function authenticate() {
+  // Static token (Directus's ADMIN_TOKEN env var) skips the login round-trip
+  // entirely — this is what Terraform uses against the deployed instance.
+  if (STATIC_TOKEN) return STATIC_TOKEN;
+
   const res = await request('POST', '/auth/login', { email: EMAIL, password: PASS });
   if (!res.ok) throw new Error(`Auth failed: ${res.status} ${await res.text()}`);
   const { data } = await res.json();
@@ -924,18 +944,33 @@ async function ensurePublicCreate(token, collection) {
 
 // ─── Directus Flow: notify via Azure Function on new submission ────────────────
 
-// When running locally, Directus is inside Docker and cannot reach localhost on the host.
-// Use the Docker bridge gateway IP (172.19.0.1) or your deployed Azure Function URL.
-const AZURE_FUNCTION_URL = process.env.AZURE_FUNCTION_URL ?? 'http://host.docker.internal:7071/api/send-contact-email';
-const AZURE_FUNCTION_KEY = process.env.AZURE_FUNCTION_KEY ?? 'REPLACE_WITH_YOUR_AZURE_FUNCTION_KEY';
+// The webhook operation always points at Directus's own env-var placeholders
+// rather than a literal URL/key, so the identical Flow config works unchanged
+// across local dev and every deployed environment — only Directus's own
+// AZURE_FUNCTION_URL / AZURE_FUNCTION_KEY settings differ (see
+// FLOWS_ENV_ALLOW_LIST in Directus/.env and Terraform's directus_config).
+const FLOW_OPERATION_OPTIONS = {
+  url: '{{$env.AZURE_FUNCTION_URL}}',
+  method: 'POST',
+  headers: [{ header: 'x-functions-key', value: '{{$env.AZURE_FUNCTION_KEY}}' }],
+  body: JSON.stringify({
+    name: '{{$trigger.payload.name}}',
+    email: '{{$trigger.payload.email}}',
+    company: '{{$trigger.payload.company}}',
+    message: '{{$trigger.payload.message}}',
+  }),
+};
 
 async function ensureContactFlow(token) {
-  // Check if a flow for contact_submissions already exists
   const res = await request('GET', '/flows?filter[name][_eq]=Notify on Contact Submission', undefined, token);
   const { data } = await res.json();
 
   if (data?.length) {
-    console.log('  contact flow — already exists, skipping.');
+    // Flow already exists — re-sync its operation to the current placeholder
+    // form on every run. Covers flows created before this script wrote
+    // placeholders directly (previously handled by a separate Terraform
+    // provisioner script) and self-heals any manual edit in the Directus UI.
+    await syncFlowOperation(token);
     return;
   }
 
@@ -971,17 +1006,7 @@ async function ensureContactFlow(token) {
       flow: flow.id,
       resolve: null,
       reject: null,
-      options: {
-        url: AZURE_FUNCTION_URL,
-        method: 'POST',
-        headers: [{ header: 'x-functions-key', value: AZURE_FUNCTION_KEY }],
-        body: JSON.stringify({
-          name: '{{$trigger.payload.name}}',
-          email: '{{$trigger.payload.email}}',
-          company: '{{$trigger.payload.company}}',
-          message: '{{$trigger.payload.message}}',
-        }),
-      },
+      options: FLOW_OPERATION_OPTIONS,
     },
     token,
   );
@@ -991,6 +1016,37 @@ async function ensureContactFlow(token) {
   await request('PATCH', `/flows/${flow.id}`, { operation: (await opRes.json()).data.id }, token);
 
   console.log('  contact flow — created (trigger: items.create on contact_submissions).');
+}
+
+async function syncFlowOperation(token) {
+  const res = await request('GET', '/operations?filter[key][_eq]=call_azure_email', undefined, token);
+  if (!res.ok) throw new Error(`List flow operation failed: ${await res.text()}`);
+  const { data } = await res.json();
+
+  if (!data.length) {
+    console.log('  contact flow — exists but operation "call_azure_email" is missing, skipping sync.');
+    return;
+  }
+
+  const operation = data[0];
+  const alreadyInSync =
+    operation.options?.url === FLOW_OPERATION_OPTIONS.url &&
+    operation.options?.headers?.[0]?.value === FLOW_OPERATION_OPTIONS.headers[0].value;
+
+  if (alreadyInSync) {
+    console.log('  contact flow — already exists and in sync, skipping.');
+    return;
+  }
+
+  const patchRes = await request(
+    'PATCH',
+    `/operations/${operation.id}`,
+    { options: { ...operation.options, url: FLOW_OPERATION_OPTIONS.url, headers: FLOW_OPERATION_OPTIONS.headers } },
+    token,
+  );
+  if (!patchRes.ok) throw new Error(`Sync flow operation failed: ${await patchRes.text()}`);
+
+  console.log('  contact flow — re-synced webhook operation to current env-var placeholders.');
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
