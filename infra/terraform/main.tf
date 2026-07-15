@@ -163,41 +163,28 @@ resource "random_password" "sql_admin_password" {
   special = true
 }
 
-resource "azurerm_mssql_server" "directus" {
-  name                         = "${local.app_name}-sqlserver"
-  resource_group_name          = data.azurerm_resource_group.main.name
-  location                     = local.sql_location
-  version                      = "12.0"
-  administrator_login          = var.sql_admin_username
-  administrator_login_password = coalesce(var.sql_admin_password != "" ? var.sql_admin_password : null, random_password.sql_admin_password.result)
-  minimum_tls_version          = "1.2"
-  tags                         = local.sql_tags
+module "database" {
+  source = "./modules/database"
 
-  identity {
-    type = "SystemAssigned"
-  }
-}
+  resource_group_name = data.azurerm_resource_group.main.name
+  location            = local.sql_location
+  project_name        = var.project_name
+  environment         = var.environment
+  admin_username      = var.sql_admin_username
+  admin_password      = coalesce(var.sql_admin_password != "" ? var.sql_admin_password : null, random_password.sql_admin_password.result)
+  database_name       = var.sql_database_name
+  # Scoped to App Service's specific outbound IPs instead of the broad
+  # AllowAzureServices (0.0.0.0) rule, which lets ANY Azure tenant's
+  # resources attempt a connection. Free - no VNet/Private Endpoint cost.
+  # Reads from the data source (not module.app_service's own output) to
+  # avoid a module-level cycle: module.app_service's directus_config
+  # references module.database's outputs, so module.database can't also
+  # depend on module.app_service's output directly - same pattern already
+  # used for the Storage Account's network_rules below.
+  allowed_ip_addresses = var.enable_app_service ? split(",", data.azurerm_linux_web_app.existing[0].outbound_ip_addresses) : []
+  tags                 = local.sql_tags
 
-resource "azurerm_mssql_database" "directus" {
-  name         = var.sql_database_name
-  server_id    = azurerm_mssql_server.directus.id
-  collation    = "SQL_Latin1_General_CP1_CI_AS"
-  license_type = "BasePrice"
-  max_size_gb  = 2
-  sku_name     = "Basic"
-  tags         = local.sql_tags
-}
-
-# SQL Server firewall: scoped to App Service's specific outbound IPs instead
-# of the broad AllowAzureServices (0.0.0.0) rule, which let ANY Azure
-# tenant's resources attempt a connection. Free - no VNet/Private Endpoint
-# cost.
-resource "azurerm_mssql_firewall_rule" "app_service_outbound" {
-  for_each         = var.enable_app_service ? toset(module.app_service[0].outbound_ip_addresses) : toset([])
-  name             = "AppService-${replace(each.value, ".", "-")}"
-  server_id        = azurerm_mssql_server.directus.id
-  start_ip_address = each.value
-  end_ip_address   = each.value
+  depends_on = [data.azurerm_linux_web_app.existing]
 }
 
 # ============================================================
@@ -249,7 +236,7 @@ resource "azurerm_key_vault_secret" "secret" {
 
 resource "azurerm_key_vault_secret" "db_password" {
   name         = "db-password"
-  value        = azurerm_mssql_server.directus.administrator_login_password
+  value        = module.database.administrator_login_password
   key_vault_id = module.key_vault.vault_id
 }
 
@@ -304,7 +291,7 @@ module "app_service" {
     HOST                        = "0.0.0.0" # explicit - must bind all interfaces for App Service's warmup probe to reach it
     PORT                        = "8055"    # must match WEBSITES_PORT in the app-service module
     DB_CLIENT                   = "mssql"
-    DB_HOST                     = azurerm_mssql_server.directus.fully_qualified_domain_name
+    DB_HOST                     = module.database.server_fqdn
     DB_PORT                     = "1433"
     DB_DATABASE                 = var.sql_database_name
     DB_USER                     = var.sql_admin_username
@@ -334,7 +321,7 @@ module "app_service" {
     # hardcoded values - kept in sync automatically (see
     # null_resource.directus_bootstrap below).
     FLOWS_ENV_ALLOW_LIST = "AZURE_FUNCTION_URL,AZURE_FUNCTION_KEY"
-    AZURE_FUNCTION_URL   = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
+    AZURE_FUNCTION_URL   = var.enable_app_service ? "https://${module.functions[0].default_hostname}/api/send-contact-email" : ""
   }
 
   # Sensitive values
@@ -343,13 +330,13 @@ module "app_service" {
     ADMIN_TOKEN               = random_password.directus_admin_token.result
     JWT_SECRET                = random_password.directus_jwt_secret.result
     SECRET                    = random_password.directus_secret.result
-    DB_PASSWORD               = azurerm_mssql_server.directus.administrator_login_password
+    DB_PASSWORD               = module.database.administrator_login_password
     STORAGE_AZURE_ACCOUNT_KEY = azurerm_storage_account.content.primary_access_key
-    AZURE_FUNCTION_KEY        = data.azurerm_function_app_host_keys.main[0].default_function_key
+    AZURE_FUNCTION_KEY        = var.enable_app_service ? module.functions[0].default_function_key : ""
   }
 
   tags       = local.directus_tags
-  depends_on = [azurerm_mssql_database.directus, module.key_vault]
+  depends_on = [module.database, module.key_vault]
 }
 
 # ============================================================
@@ -361,8 +348,8 @@ module "app_service" {
 # ============================================================
 # Read-only lookup of the already-created App Service Plan, independent of
 # module.app_service's own outputs - avoids a circular dependency, since
-# module.app_service's directus_config/directus_secrets now also reference
-# this Function App (for AZURE_FUNCTION_URL/KEY). Same pattern as
+# module.app_service's directus_config/directus_secrets reference
+# module.functions' outputs (for AZURE_FUNCTION_URL/KEY). Same pattern as
 # data.azurerm_linux_web_app.existing above. Only valid once the Plan
 # already exists (true here - created by module.app_service previously).
 data "azurerm_service_plan" "existing" {
@@ -371,11 +358,14 @@ data "azurerm_service_plan" "existing" {
   resource_group_name = data.azurerm_resource_group.main.name
 }
 
-resource "azurerm_linux_function_app" "main" {
-  count               = var.enable_app_service ? 1 : 0
-  name                = "${local.app_name}-functions"
+module "functions" {
+  count  = var.enable_app_service ? 1 : 0
+  source = "./modules/functions"
+
   resource_group_name = data.azurerm_resource_group.main.name
   location            = coalesce(var.app_service_location, var.primary_location)
+  project_name        = var.project_name
+  environment         = var.environment
   service_plan_id     = data.azurerm_service_plan.existing[0].id
 
   # Reuses the Directus storage account for Functions' internal bookkeeping
@@ -384,74 +374,24 @@ resource "azurerm_linux_function_app" "main" {
   storage_account_name       = azurerm_storage_account.content.name
   storage_account_access_key = azurerm_storage_account.content.primary_access_key
 
-  https_only = true
-
-  site_config {
-    application_stack {
-      node_version = "20"
-    }
-
-    # Required on Dedicated (B1) plans - without it, the Function host isn't
-    # kept warm/loaded and requests fail with a generic empty 500 from the
-    # platform (Kestrel), before user code ever runs. Not needed (or billed
-    # extra) on Consumption plans, but this Function shares Directus's paid
-    # B1 plan, so it must be explicit here.
-    always_on = true
-
-    # Only the frontend origin may call these endpoints directly from the browser
-    cors {
-      allowed_origins = ["https://${module.static_web_app.default_host_name}"]
-    }
-  }
-
-  app_settings = {
-    FUNCTIONS_WORKER_RUNTIME = "node"
-    ACS_SENDER_ADDRESS       = var.from_email_address
-    CONTACT_RECIPIENT_EMAIL  = var.contact_recipient_email
-    # No secret: the function authenticates to ACS with its own managed identity
-    # (see azurerm_role_assignment.functions_acs_email_sender below). Only the
-    # non-sensitive resource endpoint is needed. var.azure_communication_email_domain
-    # holds the ACS endpoint URL, e.g. https://<name>.<region>.communication.azure.com/.
-    ACS_ENDPOINT = var.azure_communication_email_domain
-  }
-
-  identity {
-    type = "SystemAssigned"
-  }
+  cors_allowed_origin     = "https://${module.static_web_app.default_host_name}"
+  from_email_address      = var.from_email_address
+  contact_recipient_email = var.contact_recipient_email
+  # var.azure_communication_email_domain holds the ACS endpoint URL, e.g.
+  # https://<name>.<region>.communication.azure.com/. No secret: the
+  # function authenticates to ACS with its own managed identity.
+  acs_endpoint      = var.azure_communication_email_domain
+  acs_resource_name = var.acs_resource_name
 
   tags = local.functions_tags
 
   depends_on = [data.azurerm_service_plan.existing]
 }
 
-# RBAC: Function App managed identity sends email through ACS via Entra ID -
-# no connection string / access key stored anywhere. "Communication and Email
-# Service Owner" is the built-in role that authorizes email send. Scoped to the
-# single Communication Services resource (least privilege). The ACS resource is
-# not managed by this Terraform, so its id is composed from the resource group.
-resource "azurerm_role_assignment" "functions_acs_email_sender" {
-  count                = var.enable_app_service ? 1 : 0
-  scope                = "${data.azurerm_resource_group.main.id}/providers/Microsoft.Communication/communicationServices/${var.acs_resource_name}"
-  role_definition_name = "Communication and Email Service Owner"
-  principal_id         = azurerm_linux_function_app.main[0].identity[0].principal_id
-
-  depends_on = [azurerm_linux_function_app.main]
-}
-
-# Reads the Function App's auto-generated default host key - lets Directus
-# call it without a secret ever being typed in manually.
-data "azurerm_function_app_host_keys" "main" {
-  count               = var.enable_app_service ? 1 : 0
-  name                = azurerm_linux_function_app.main[0].name
-  resource_group_name = data.azurerm_resource_group.main.name
-
-  depends_on = [azurerm_linux_function_app.main]
-}
-
 resource "azurerm_key_vault_secret" "azure_function_key" {
   count        = var.enable_app_service ? 1 : 0
   name         = "azure-function-key"
-  value        = data.azurerm_function_app_host_keys.main[0].default_function_key
+  value        = module.functions[0].default_function_key
   key_vault_id = module.key_vault.vault_id
 }
 
@@ -485,7 +425,7 @@ resource "null_resource" "directus_bootstrap" {
     # see FLOW_OPERATION_OPTIONS in setup.js), so a key rotation doesn't
     # actually change anything this script writes. Tracking it here would
     # only store the raw secret in this resource's state for no benefit.
-    function_url      = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
+    function_url      = "https://${module.functions[0].default_hostname}/api/send-contact-email"
     setup_script_hash = filesha1("${path.module}/../../Directus/setup.js")
     package_json_hash = filesha1("${path.module}/../../Directus/package.json")
   }
@@ -499,7 +439,7 @@ resource "null_resource" "directus_bootstrap" {
     }
   }
 
-  depends_on = [module.app_service, azurerm_linux_function_app.main, data.azurerm_function_app_host_keys.main, azurerm_key_vault_secret.admin_token]
+  depends_on = [module.app_service, module.functions, azurerm_key_vault_secret.admin_token]
 }
 
 # NOTE: App Service -> Key Vault access is an RBAC role assignment inside
@@ -574,5 +514,5 @@ resource "github_actions_secret" "azure_functions_app_name" {
   count       = var.enable_app_service ? 1 : 0
   repository  = var.github_repository
   secret_name = "AZURE_FUNCTIONS_APP_NAME"
-  value       = azurerm_linux_function_app.main[0].name
+  value       = module.functions[0].function_app_name
 }
