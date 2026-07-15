@@ -1,0 +1,16 @@
+{
+  "name": "gencolink-directus-setup",
+  "version": "1.0.0",
+  "description": "Bootstrap script for the Gencolink Directus instance (collections, permissions, seed content, contact-email Flow)",
+  "private": true,
+  "scripts": {
+    "setup": "node setup.js"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.0.0",
+    "@azure/keyvault-secrets": "^4.8.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

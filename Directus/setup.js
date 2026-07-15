@@ -10,13 +10,19 @@
  * number of times; every step skips work that's already done.
  *
  * Usage:
- *   node setup.js
+ *   npm install && node setup.js
  *
- * Auth (pick one):
- *   DIRECTUS_ADMIN_TOKEN           static API token — skips the login call.
- *                                   Used by Terraform (Directus's ADMIN_TOKEN
- *                                   env var provisions this automatically).
- *   ADMIN_EMAIL / ADMIN_PASSWORD   interactive/local login (default flow).
+ * Auth (pick one, checked in this order):
+ *   AZURE_KEY_VAULT_NAME           Fetches the "admin-token" secret from this
+ *                                   Key Vault via DefaultAzureCredential - no
+ *                                   secret ever touches an env var or the
+ *                                   Terraform config/state for this script.
+ *                                   Works with `az login`, a Managed Identity,
+ *                                   or any other credential in the default
+ *                                   chain. Used by Terraform.
+ *   DIRECTUS_ADMIN_TOKEN           Static API token supplied directly.
+ *   ADMIN_EMAIL / ADMIN_PASSWORD   Interactive/local login (default for
+ *                                   `docker compose up -d` local dev).
  *
  * Other env overrides:
  *   DIRECTUS_URL       (default: http://localhost:8055)
@@ -33,10 +39,11 @@ const BASE = (process.env.DIRECTUS_URL ?? 'http://localhost:8055').replace(/\/$/
 const EMAIL = process.env.ADMIN_EMAIL ?? 'admin@gencolink.com';
 const PASS = process.env.ADMIN_PASSWORD;
 const STATIC_TOKEN = process.env.DIRECTUS_ADMIN_TOKEN;
+const KEY_VAULT_NAME = process.env.AZURE_KEY_VAULT_NAME;
 
 // Fail fast if we have no way to authenticate at all.
-if (!STATIC_TOKEN && !PASS && !process.env.DIRECTUS_URL) {
-  throw new Error('Set DIRECTUS_ADMIN_TOKEN, or ADMIN_PASSWORD, to authenticate.');
+if (!KEY_VAULT_NAME && !STATIC_TOKEN && !PASS && !process.env.DIRECTUS_URL) {
+  throw new Error('Set AZURE_KEY_VAULT_NAME, DIRECTUS_ADMIN_TOKEN, or ADMIN_PASSWORD to authenticate.');
 }
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
@@ -325,8 +332,21 @@ async function waitForDirectus(maxWaitMs = 60_000) {
 }
 
 async function authenticate() {
+  // Key Vault (preferred for Terraform): the admin token never touches an
+  // env var, Terraform's own config, or its state for this script - only the
+  // (non-secret) vault name does. DefaultAzureCredential authenticates with
+  // whatever's available: `az login` locally, a Managed Identity in Azure,
+  // or any other credential in its default chain.
+  if (KEY_VAULT_NAME) {
+    const { DefaultAzureCredential } = require('@azure/identity');
+    const { SecretClient } = require('@azure/keyvault-secrets');
+    const client = new SecretClient(`https://${KEY_VAULT_NAME}.vault.azure.net`, new DefaultAzureCredential());
+    const secret = await client.getSecret('admin-token');
+    return secret.value;
+  }
+
   // Static token (Directus's ADMIN_TOKEN env var) skips the login round-trip
-  // entirely — this is what Terraform uses against the deployed instance.
+  // entirely.
   if (STATIC_TOKEN) return STATIC_TOKEN;
 
   const res = await request('POST', '/auth/login', { email: EMAIL, password: PASS });

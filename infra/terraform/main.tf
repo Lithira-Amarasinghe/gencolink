@@ -465,26 +465,37 @@ resource "azurerm_key_vault_secret" "azure_function_key" {
 # no manual permission grant in the Directus UI. Zero Azure cost: this runs
 # locally on the machine executing `terraform apply`, not as an Azure
 # resource.
+#
+# The admin token is fetched from Key Vault at execution time inside
+# setup.js itself via the Azure SDK (DefaultAzureCredential + SecretClient -
+# same pattern already used by functions/send-contact-email), authenticating
+# with whatever's already logged in (`az login` locally). Only the
+# (non-secret) vault name flows through Terraform's config/state for this
+# resource - the token itself never does. The deployer already has "Key
+# Vault Secrets User" on this vault (module.key_vault), so no extra access is
+# needed. The token still exists in plaintext in random_password
+# .directus_admin_token's own state (inherent to how Terraform tracks
+# generated values) - this only avoids a second, avoidable copy.
 resource "null_resource" "directus_bootstrap" {
   count = var.enable_app_service ? 1 : 0
 
   triggers = {
-    function_url         = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
-    function_key         = data.azurerm_function_app_host_keys.main[0].default_function_key
-    directus_admin_token = random_password.directus_admin_token.result
-    setup_script_hash    = filesha1("${path.module}/../../Directus/setup.js")
+    function_url      = "https://${azurerm_linux_function_app.main[0].default_hostname}/api/send-contact-email"
+    function_key      = data.azurerm_function_app_host_keys.main[0].default_function_key
+    setup_script_hash = filesha1("${path.module}/../../Directus/setup.js")
+    package_json_hash = filesha1("${path.module}/../../Directus/package.json")
   }
 
   provisioner "local-exec" {
-    command     = "node \"${path.module}/../../Directus/setup.js\""
+    command     = "npm install --prefix \"${path.module}/../../Directus\" --no-audit --no-fund && node \"${path.module}/../../Directus/setup.js\""
     interpreter = ["bash", "-c"]
     environment = {
       DIRECTUS_URL         = module.app_service[0].app_service_url
-      DIRECTUS_ADMIN_TOKEN = random_password.directus_admin_token.result
+      AZURE_KEY_VAULT_NAME = module.key_vault.vault_name
     }
   }
 
-  depends_on = [module.app_service, azurerm_linux_function_app.main, data.azurerm_function_app_host_keys.main]
+  depends_on = [module.app_service, azurerm_linux_function_app.main, data.azurerm_function_app_host_keys.main, azurerm_key_vault_secret.admin_token]
 }
 
 # NOTE: App Service -> Key Vault access is an RBAC role assignment inside
