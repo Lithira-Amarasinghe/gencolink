@@ -28,7 +28,7 @@ No CI is configured for this repo yet.
 ## Secrets — do not expose
 
 - `Directus/.env` contains real dev secrets. It's excluded via `Directus/.gitignore`, and a `.git/hooks/pre-commit` hook blocks commits that stage it — don't weaken either without flagging it to the user.
-- `Directus/README.md` contains plaintext admin credentials (`admin@gencolink.com` / a real password). Don't copy these into other files, logs, or commit messages.
+- Never put real credentials in tracked files (READMEs, docs, tfvars.example, compose files). Local secrets live only in gitignored files (`Directus/.env`, `functions/local.settings.json`, `infra/terraform/terraform.tfvars`); Azure secrets are Terraform-generated into Key Vault. Point docs at those, never inline the values.
 
 ## Ignore these when exploring/committing
 
