@@ -16,6 +16,7 @@ git history if you need them.)
 | **Storage** | Azure Storage Account | Directus uploads (blob) |
 | **Secrets** | Azure Key Vault | Terraform-generated; nothing hand-typed |
 | **Email delivery** | Azure Communication Services | Managed outside Terraform |
+| **Terraform state** | Azure Storage (`gencolink-rg-tfstate`/`gencolinktfstate`) | Remote, encrypted at rest; AAD auth, no access key |
 
 Flow: contact form → Directus `contact_submissions` → Directus Flow webhook →
 Function → ACS email.
@@ -24,19 +25,34 @@ Function → ACS email.
 
 1. **Azure**: an existing resource group named `gencolink`; `az login`; correct
    subscription selected. Terraform *reads* the RG, it does not create it.
-2. **OIDC for GitHub Actions**: an App Registration + federated credential with
+2. **Terraform state backend**: a one-time bootstrap, deliberately done via
+   Azure CLI rather than Terraform (state storage can't depend on itself):
+   ```bash
+   az group create -n gencolink-rg-tfstate -l eastus2
+   az storage account create -n gencolinktfstate -g gencolink-rg-tfstate \
+     --sku Standard_LRS --https-only true --allow-blob-public-access false
+   az storage account blob-service-properties update \
+     --account-name gencolinktfstate -g gencolink-rg-tfstate \
+     --enable-versioning true --enable-delete-retention true --delete-retention-days 7
+   az role assignment create --assignee "$(az ad signed-in-user show --query id -o tsv)" \
+     --role "Storage Blob Data Contributor" \
+     --scope "$(az storage account show -n gencolinktfstate -g gencolink-rg-tfstate --query id -o tsv)"
+   az storage container create --name tfstate --account-name gencolinktfstate --auth-mode login
+   ```
+   Already done for this project. Costs a few cents/month.
+3. **OIDC for GitHub Actions**: an App Registration + federated credential with
    Contributor on the RG. See [AZURE_OIDC_SETUP.md](../AZURE_OIDC_SETUP.md).
    Add these three as **GitHub repo secrets manually** (Terraform creates all
    the others): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
-3. **GitHub PAT** for Terraform's `github` provider (fine-grained, this repo,
+4. **GitHub PAT** for Terraform's `github` provider (fine-grained, this repo,
    Actions read/write) - a token you generate yourself, distinct from GitHub
    Actions' own auto-issued `secrets.GITHUB_TOKEN` used inside workflows.
    Export it as `GITHUB_TOKEN` in the shell you run `terraform apply` from
    (the provider reads it automatically); don't put it in `terraform.tfvars`.
-4. **Azure Communication Services**: the ACS resource + a verified email domain
+5. **Azure Communication Services**: the ACS resource + a verified email domain
    (DNS records). ACS is *not* managed by Terraform — it must exist first, and
    its endpoint/resource-name go in `terraform.tfvars`.
-5. **`terraform.tfvars`**: `cp terraform.tfvars.example terraform.tfvars` and
+6. **`terraform.tfvars`**: `cp terraform.tfvars.example terraform.tfvars` and
    fill it in. All real secrets are either Terraform-generated or supplied via
    env vars; the file itself is gitignored.
 
