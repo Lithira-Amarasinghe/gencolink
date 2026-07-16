@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, AfterViewInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  signal,
+  AfterViewInit,
+  OnDestroy,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ContactService } from './contact.service';
 import {
@@ -31,7 +39,7 @@ import { SiteContentService } from './site-content.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(window:load)': 'setupScrollAnimation()' },
 })
-export class App implements AfterViewInit {
+export class App implements AfterViewInit, OnDestroy {
   private readonly formBuilder = new FormBuilder();
   readonly contentStore = inject(SiteContentService);
 
@@ -64,12 +72,21 @@ export class App implements AfterViewInit {
   constructor() {
     void this.contentStore.load();
 
-    // Re-run scroll-reveal observation whenever Directus content arrives.
-    // Without this, rows rendered after the initial (pre-data) DOM snapshot
-    // never get observed, so they stay stuck at opacity:0 forever - visible
-    // in the DOM/inspector but never actually shown on screen.
+    // Re-run scroll-reveal observation whenever the rendered DOM changes.
+    // Rows are opacity:0 until IntersectionObserver adds .animate-in-view, so
+    // anything rendered after the last observation pass stays invisible -
+    // present in the DOM/inspector but never actually shown on screen.
+    //
+    // Tracking loading() as well as content() is what makes the CMS-failure
+    // path work: when the Directus fetch fails, SiteContentService keeps the
+    // existing default content, so content() never changes and this effect
+    // would never re-run. Only loading() flips (true -> false), and that flip
+    // is what swaps the skeletons for the real rows - which then need
+    // observing. Tracking content() alone meant a failed fetch left every
+    // section blank except the hero (the hero isn't behind the loading gate).
     effect(() => {
       this.contentStore.content();
+      this.contentStore.loading();
       setTimeout(() => this.setupScrollAnimation(), 0);
     });
   }
@@ -79,6 +96,12 @@ export class App implements AfterViewInit {
   }
 
   setupScrollAnimation(): void {
+    // This runs again on every content/loading change, so drop the previous
+    // observers first - otherwise each pass leaves a live observer still
+    // watching now-detached nodes.
+    this.sectionObserver?.disconnect();
+    this.itemObserver?.disconnect();
+
     // Observe sections for fade-in
     const sectionObserver = new IntersectionObserver(
       (entries) => {
@@ -90,6 +113,7 @@ export class App implements AfterViewInit {
       },
       { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
     );
+    this.sectionObserver = sectionObserver;
 
     const sectionsToObserve = document.querySelectorAll('[data-fade-in]');
     sectionsToObserve.forEach((el) => sectionObserver.observe(el));
@@ -106,9 +130,16 @@ export class App implements AfterViewInit {
       },
       { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
     );
+    this.itemObserver = itemObserver;
 
     const itemsToObserve = document.querySelectorAll('.service-row, .value-item, .reveal-item');
     itemsToObserve.forEach((el) => itemObserver.observe(el));
+  }
+
+  ngOnDestroy(): void {
+    this.sectionObserver?.disconnect();
+    this.itemObserver?.disconnect();
+    if (this.toastTimer) clearTimeout(this.toastTimer);
   }
 
   scrollTo(target: string): void {
