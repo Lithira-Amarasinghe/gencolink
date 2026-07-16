@@ -318,18 +318,33 @@ async function request(method, path, body, token) {
 
 // ─── Wait / Auth ──────────────────────────────────────────────────────────────
 
-async function waitForDirectus(maxWaitMs = 60_000) {
+// Polls /server/ping, NOT /server/health: Directus 12.x's public role denies
+// /server/health by default, so an unauthenticated probe gets 403 and this
+// would spin until timeout even though Directus is up and serving. This runs
+// before authenticate(), so the probe has to be a public endpoint - /server/ping
+// is public and returns "pong". Same endpoint the App Service health check and
+// the CI health gate already use.
+async function waitForDirectus(maxWaitMs = 180_000) {
   const start = Date.now();
+  let lastStatus = 'no response';
   process.stdout.write('Waiting for Directus');
   while (Date.now() - start < maxWaitMs) {
     try {
-      const res = await fetch(`${BASE}/server/health`);
+      const res = await fetch(`${BASE}/server/ping`);
       if (res.ok) { console.log(' ready.\n'); return; }
-    } catch { /* not up yet */ }
+      lastStatus = `HTTP ${res.status}`;
+    } catch (err) {
+      lastStatus = err.message;
+    }
     process.stdout.write('.');
     await new Promise((r) => setTimeout(r, 2000));
   }
-  throw new Error('Directus did not become ready in time.');
+  // Report what actually went wrong - a bare "not ready" hides an auth/URL
+  // problem behind what looks like a slow boot.
+  throw new Error(
+    `Directus did not become ready in time (${maxWaitMs / 1000}s). ` +
+    `Last probe of ${BASE}/server/ping returned: ${lastStatus}`,
+  );
 }
 
 async function authenticate() {
