@@ -23,12 +23,7 @@ output "principal_id" {
   description = "System Assigned Managed Identity principal ID (for RBAC)"
 }
 
-output "service_plan_id" {
-  value       = azurerm_service_plan.main.id
-  description = "App Service Plan ID"
-}
-
 output "outbound_ip_addresses" {
   value       = split(",", azurerm_linux_web_app.main.outbound_ip_addresses)
-  description = "App Service outbound IPs (shared, tied to the App Service Plan - not static across region/SKU changes) - used to scope SQL Server firewall rules instead of the broad AllowAzureServices (0.0.0.0) rule"
+  description = "App Service outbound IPs (shared, tied to the App Service Plan - not static across region/SKU changes). Informational only - NOT used for firewall scoping (SQL/Storage use the broad AllowAzureServices / Allow default on F1-D1, or the VNet integration subnet on B1+, since these IPs are unknown until after apply and can't drive a for_each in the same apply)."
 }

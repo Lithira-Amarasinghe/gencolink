@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Directus bootstrap — run once after `docker compose up -d`, or automatically
- * by Terraform (null_resource.directus_bootstrap) after every `terraform apply`
- * against the deployed Azure Directus instance.
+ * Directus bootstrap — run once after `docker compose up -d` locally, or
+ * automatically by the `bootstrap` job in
+ * .github/workflows/directus-appservice.yml after the deployed Azure Directus
+ * container is up and healthy.
  *
  * Creates every content collection, grants public read (+ create on
  * contact_submissions), seeds initial content, and creates/re-syncs the

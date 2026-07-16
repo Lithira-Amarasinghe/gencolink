@@ -161,9 +161,14 @@ variable "enable_app_service" {
 }
 
 variable "app_service_sku" {
-  description = "App Service Plan SKU. B1 (~$13/mo) is the minimum viable tier - F1/Free was proven unusable for Directus (container startup exceeds the 230s timeout and exhausts the daily quota)."
+  description = "App Service Plan SKU. B1 (~$13/mo) is the minimum viable tier for 24/7 production - F1/Free carries hard limits for Directus (cold-start timeout risk, no always-on, no VNet integration, 60 min/day compute quota). The networking strategy is derived from this value automatically: B1+ uses VNet integration + service endpoints, F1/D1 falls back to IP firewall rules."
   type        = string
   default     = "B1"
+
+  validation {
+    condition     = can(regex("^(F1|D1|B[1-3]|S[1-3]|P(1|2|3)?v[2-4]|P0v3|I[1-6]v2|EP[1-3]|Y1)$", upper(var.app_service_sku)))
+    error_message = "app_service_sku must be a valid App Service Plan SKU (e.g. F1, B1, S1, P0v3, P1v3)."
+  }
 }
 
 # ============================================================

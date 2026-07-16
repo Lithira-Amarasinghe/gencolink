@@ -34,9 +34,15 @@ variable "database_name" {
   description = "SQL Database name"
 }
 
-variable "allowed_ip_addresses" {
+variable "allow_azure_services" {
+  type        = bool
+  description = "Add the broad 'AllowAllWindowsAzureIps' (0.0.0.0) firewall rule, letting any Azure resource in any tenant attempt a connection (still requires valid credentials). Used only on Free/Shared plan tiers, where VNet integration is unavailable and the App Service's outbound IPs aren't known until after apply (so a precise, IP-scoped rule can't be created in a single terraform apply)."
+  default     = false
+}
+
+variable "allowed_subnet_ids" {
   type        = list(string)
-  description = "Outbound IPs allowed to connect (e.g. the App Service Plan's outbound IPs). Scoped firewall rules instead of the broad AllowAzureServices (0.0.0.0) rule."
+  description = "Subnet IDs allowed to connect via Microsoft.Sql service endpoint (e.g. the App Service VNet-integration subnet). Used on B1+ tiers - precise, no dependency on mutable outbound IPs."
   default     = []
 }
 

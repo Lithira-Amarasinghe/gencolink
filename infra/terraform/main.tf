@@ -2,6 +2,19 @@ locals {
   # Clean naming: NO location in resource names (location-independent design)
   app_name = "${var.project_name}-${var.environment}"
 
+  # True for every tier except Free/Shared (F1, D1). Gates two things those
+  # tiers don't support: regional VNet integration and always-on.
+  plan_supports_vnet = !contains(["F1", "D1"], upper(var.app_service_sku))
+
+  # Networking strategy is derived from the App Service Plan tier:
+  #   - Basic (B1) and above: VNet integration + service endpoints.
+  #     Storage/SQL firewalls allow the integration SUBNET, not IPs - no
+  #     dependency on the App Service's mutable outbound IPs.
+  #   - Free/Shared (F1, D1): regional VNet integration is NOT supported, so
+  #     fall back to IP-based firewall rules scoped to the App Service's
+  #     outbound IPs (weaker: those IPs can change on scale/SKU events).
+  use_vnet = var.enable_app_service && local.plan_supports_vnet
+
   # Resolve service-specific locations (with fallbacks to primary)
   directus_location = coalesce(var.directus_location, var.primary_location)
   frontend_location = coalesce(var.frontend_location, var.primary_location)
@@ -79,19 +92,6 @@ data "azurerm_resource_group" "main" {
   name = var.resource_group_name
 }
 
-# Read App Service's outbound IPs independently of the module output, to
-# avoid a circular dependency: the Storage Account must exist before App
-# Service can be created (App Service needs its access key), so the
-# Storage Account's network rules can't depend on App Service's own
-# resource output. This data source breaks the cycle since it's a
-# read-only lookup, not a creation dependency. Only valid once App Service
-# already exists.
-data "azurerm_linux_web_app" "existing" {
-  count               = var.enable_app_service ? 1 : 0
-  name                = "${local.app_name}-appservice"
-  resource_group_name = data.azurerm_resource_group.main.name
-}
-
 # ============================================================
 # GENERATED SECRETS (single source of truth -> Key Vault + GitHub)
 # ============================================================
@@ -116,6 +116,47 @@ resource "random_password" "directus_secret" {
 }
 
 # ============================================================
+# NETWORKING: VNet + App Service integration subnet (B1+ tiers only)
+# Storage/SQL firewalls allow this SUBNET via service endpoints instead of
+# the App Service's mutable outbound IPs. Free (no Private Endpoint cost),
+# and it removes the two-phase bootstrap: the subnet exists before both the
+# App Service and the firewall rules, so Terraform's graph is naturally
+# ordered. Skipped entirely on F1/D1, which don't support VNet integration.
+# ============================================================
+resource "azurerm_virtual_network" "main" {
+  count               = local.use_vnet ? 1 : 0
+  name                = "${local.app_name}-vnet"
+  location            = coalesce(var.app_service_location, var.primary_location) # must match the App Service Plan's region
+  resource_group_name = data.azurerm_resource_group.main.name
+  address_space       = ["10.10.0.0/16"]
+  tags                = local.common_tags
+}
+
+resource "azurerm_subnet" "app_integration" {
+  count                = local.use_vnet ? 1 : 0
+  name                 = "app-integration"
+  resource_group_name  = data.azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main[0].name
+  address_prefixes     = ["10.10.1.0/24"]
+
+  # Microsoft.Sql: SQL Server is in the same region as this subnet.
+  # Microsoft.Storage.Global: the Storage Account may be in a DIFFERENT
+  # region (eastus2 vs westus2) - the plain Microsoft.Storage endpoint only
+  # matches same-region accounts; Global covers cross-region.
+  service_endpoints = ["Microsoft.Sql", "Microsoft.Storage.Global"]
+
+  # Required for App Service regional VNet integration; one delegated subnet
+  # serves every app on the same App Service Plan (Directus + Functions).
+  delegation {
+    name = "appservice-integration"
+    service_delegation {
+      name    = "Microsoft.Web/serverFarms"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+    }
+  }
+}
+
+# ============================================================
 # STORAGE ACCOUNT: Directus uploads (blob) + SQLite database file (Azure Files)
 # Clean naming: location-independent
 # ============================================================
@@ -130,17 +171,29 @@ resource "azurerm_storage_account" "content" {
   min_tls_version            = "TLS1_2"
   tags                       = local.storage_tags
 
-  # Network lockdown: deny all data-plane access by default, allow only by
-  # IP (not resource_access_rule - Directus authenticates to Azure Storage
-  # with a shared account key, and the "resource instance" network
-  # exception only matches AAD/Managed-Identity-authenticated calls, so it
-  # would silently block Directus too). Terraform itself is unaffected
-  # (resource management uses the ARM control plane, not this data-plane
-  # firewall).
+  # Network lockdown - managed inline so Terraform always owns default_action
+  # (it flips this value automatically between tiers; nothing manual):
+  #   B1+ (use_vnet): Deny by default, allow ONLY the App Service integration
+  #     subnet via its Microsoft.Storage service endpoint. The subnet is
+  #     created independently of the App Service, so there is no cycle.
+  #   F1/D1: Allow (public network access). Storage has no "allow all Azure
+  #     IPs" sentinel like SQL, and a precise IP list is impossible in one
+  #     apply (the App Service's outbound IPs are unknown until after apply).
+  #     Data is still gated by the account key (Key Vault + RBAC), never
+  #     anonymous - the accepted trade-off for the free/dev-test tier.
+  # (This was briefly a standalone azurerm_storage_account_network_rules
+  # resource to break a cycle when IP rules referenced the App Service's
+  # outbound IPs. Those IP rules are gone, so the cycle is gone, and inline
+  # is both simpler and always-managed - no drift, no manual reset.)
+  # KNOWN GAP: the Functions app (Flex Consumption) has no VNet integration
+  # here, so if use_vnet ever becomes true (Directus on B1+) while Functions
+  # still needs this account, it will be locked out by Deny + subnet-only.
+  # Not an issue today (Directus is F1, use_vnet=false, default_action=Allow).
+  # Revisit only if Directus moves to B1+.
   network_rules {
-    default_action = "Deny"
-    bypass         = ["AzureServices"]
-    ip_rules       = var.enable_app_service ? split(",", data.azurerm_linux_web_app.existing[0].outbound_ip_addresses) : []
+    default_action             = local.use_vnet ? "Deny" : "Allow"
+    bypass                     = ["AzureServices"]
+    virtual_network_subnet_ids = local.use_vnet ? [azurerm_subnet.app_integration[0].id] : []
   }
 }
 
@@ -173,18 +226,17 @@ module "database" {
   admin_username      = var.sql_admin_username
   admin_password      = coalesce(var.sql_admin_password != "" ? var.sql_admin_password : null, random_password.sql_admin_password.result)
   database_name       = var.sql_database_name
-  # Scoped to App Service's specific outbound IPs instead of the broad
-  # AllowAzureServices (0.0.0.0) rule, which lets ANY Azure tenant's
-  # resources attempt a connection. Free - no VNet/Private Endpoint cost.
-  # Reads from the data source (not module.app_service's own output) to
-  # avoid a module-level cycle: module.app_service's directus_config
-  # references module.database's outputs, so module.database can't also
-  # depend on module.app_service's output directly - same pattern already
-  # used for the Storage Account's network_rules below.
-  allowed_ip_addresses = var.enable_app_service ? split(",", data.azurerm_linux_web_app.existing[0].outbound_ip_addresses) : []
+  # Firewall scoping (both free - no VNet/Private Endpoint cost):
+  #   B1+ (use_vnet): allow the App Service integration subnet via its
+  #   Microsoft.Sql service endpoint - precise, no IPs involved.
+  #   F1/D1: the broad "AllowAzureServices" rule. A precise, IP-scoped rule
+  #   is NOT possible here in a single apply - the App Service's outbound
+  #   IPs are assigned by Azure at creation and stay unknown until after
+  #   apply, so a for_each keyed on them fails at plan time. Accepted
+  #   trade-off for the free/dev-test tier (see module for detail).
+  allowed_subnet_ids   = local.use_vnet ? [azurerm_subnet.app_integration[0].id] : []
+  allow_azure_services = !local.use_vnet && var.enable_app_service
   tags                 = local.sql_tags
-
-  depends_on = [data.azurerm_linux_web_app.existing]
 }
 
 # ============================================================
@@ -269,6 +321,23 @@ module "static_web_app" {
 }
 
 # ============================================================
+# APP SERVICE PLAN (shared by Directus and the Functions app)
+# Owned at the root - both apps reference it directly, which keeps the
+# dependency graph acyclic (when the Plan lived inside the app-service
+# module, the Functions module had to read it back via a data source that
+# only worked once the Plan already existed - a two-phase bootstrap).
+# ============================================================
+resource "azurerm_service_plan" "main" {
+  count               = var.enable_app_service ? 1 : 0
+  name                = "${local.app_name}-asp"
+  location            = coalesce(var.app_service_location, var.primary_location)
+  resource_group_name = data.azurerm_resource_group.main.name
+  os_type             = "Linux"
+  sku_name            = var.app_service_sku
+  tags                = local.directus_tags
+}
+
+# ============================================================
 # APP SERVICE: Directus CMS
 # ============================================================
 module "app_service" {
@@ -279,13 +348,17 @@ module "app_service" {
   location            = coalesce(var.app_service_location, var.primary_location) # App Service specific location
   project_name        = var.project_name
   environment         = var.environment
-  sku                 = var.app_service_sku
+  service_plan_id     = azurerm_service_plan.main[0].id
+  always_on           = local.plan_supports_vnet # F1/D1 don't support always-on
 
   # Key Vault integration
   key_vault_id  = module.key_vault.vault_id
   key_vault_uri = module.key_vault.vault_uri
 
   storage_account_id = azurerm_storage_account.content.id
+
+  # B1+ only: VNet integration subnet (F1/D1 get null - unsupported there)
+  vnet_integration_subnet_id = local.use_vnet ? azurerm_subnet.app_integration[0].id : null
 
   directus_config = {
     HOST                        = "0.0.0.0" # explicit - must bind all interfaces for App Service's warmup probe to reach it
@@ -318,10 +391,12 @@ module "app_service" {
 
     # Lets the "Notify on Contact Submission" Flow reference these as
     # {{$env.AZURE_FUNCTION_URL}} / {{$env.AZURE_FUNCTION_KEY}} instead of
-    # hardcoded values - kept in sync automatically (see
-    # null_resource.directus_bootstrap below).
+    # hardcoded values. The Flow itself is created by the CI bootstrap job
+    # (setup.js in directus-appservice.yml), which writes those placeholders.
     FLOWS_ENV_ALLOW_LIST = "AZURE_FUNCTION_URL,AZURE_FUNCTION_KEY"
-    AZURE_FUNCTION_URL   = var.enable_app_service ? "https://${module.functions[0].default_hostname}/api/send-contact-email" : ""
+    # Direct reference is safe: module.functions doesn't depend on this
+    # module (both reference the root-level Plan), so the graph is linear.
+    AZURE_FUNCTION_URL = "https://${module.functions[0].default_hostname}/api/send-contact-email"
   }
 
   # Sensitive values
@@ -332,30 +407,46 @@ module "app_service" {
     SECRET                    = random_password.directus_secret.result
     DB_PASSWORD               = module.database.administrator_login_password
     STORAGE_AZURE_ACCOUNT_KEY = azurerm_storage_account.content.primary_access_key
-    AZURE_FUNCTION_KEY        = var.enable_app_service ? module.functions[0].default_function_key : ""
+    AZURE_FUNCTION_KEY        = module.functions[0].default_function_key
   }
 
-  tags       = local.directus_tags
-  depends_on = [module.database, module.key_vault]
+  # No module-level depends_on: dependencies on the database and Key Vault
+  # are implicit through the expressions above (server_fqdn, vault_uri, ...).
+  # An explicit depends_on on module.database would be a CYCLE now that the
+  # database module's firewall rules reference this module's outbound IPs -
+  # module-level depends_on covers every resource in the target module.
+  tags = local.directus_tags
 }
 
 # ============================================================
 # AZURE FUNCTIONS: send-contact-email (Directus Flow webhook target)
-# Deployed onto the SAME App Service Plan as Directus (gencolink-prod-asp,
-# B1) - Linux apps on one Plan share its compute/cost, so this adds no
-# extra Plan charge. Only new cost is negligible Functions execution
-# (well within free monthly grant) - no new Plan, no new compute SKU.
+# Always deployed on its OWN Flex Consumption (FC1) plan, regardless of
+# Directus's App Service Plan tier. This sidesteps two Azure limitations hit
+# when trying to share Directus's plan:
+#   - Function Apps are flatly rejected on Free/Shared plans (error 59919).
+#   - A resource group hosting a Free/Shared Linux web-app plan can't also
+#     host a Linux Consumption (Y1) plan (error 59324).
+# Flex Consumption needs neither a shared plan nor a separate resource group:
+# it's Linux-only, $0 fixed cost (pay-per-execution), and lives in the main
+# RG alongside everything else. If Directus's tier changes later, this stays
+# unaffected - re-evaluate only if explicitly asked to share Directus's plan.
 # ============================================================
-# Read-only lookup of the already-created App Service Plan, independent of
-# module.app_service's own outputs - avoids a circular dependency, since
-# module.app_service's directus_config/directus_secrets reference
-# module.functions' outputs (for AZURE_FUNCTION_URL/KEY). Same pattern as
-# data.azurerm_linux_web_app.existing above. Only valid once the Plan
-# already exists (true here - created by module.app_service previously).
-data "azurerm_service_plan" "existing" {
+resource "azurerm_service_plan" "functions" {
   count               = var.enable_app_service ? 1 : 0
-  name                = "${local.app_name}-asp"
+  name                = "${local.app_name}-functions-asp"
+  location            = coalesce(var.app_service_location, var.primary_location)
   resource_group_name = data.azurerm_resource_group.main.name
+  os_type             = "Linux"
+  sku_name            = "FC1" # Flex Consumption: $0 fixed, pay-per-execution
+  tags                = local.functions_tags
+}
+
+# Flex Consumption requires its own deployment-package container, separate
+# from Directus's "directus-uploads" container on the same shared account.
+resource "azurerm_storage_container" "functions_deployment" {
+  name                  = "functions-deployment"
+  storage_account_id    = azurerm_storage_account.content.id
+  container_access_type = "private"
 }
 
 module "functions" {
@@ -366,13 +457,13 @@ module "functions" {
   location            = coalesce(var.app_service_location, var.primary_location)
   project_name        = var.project_name
   environment         = var.environment
-  service_plan_id     = data.azurerm_service_plan.existing[0].id
+  service_plan_id     = azurerm_service_plan.functions[0].id
 
-  # Reuses the Directus storage account for Functions' internal bookkeeping
-  # (triggers/locks) instead of provisioning a dedicated one - avoids an
-  # additional Storage Account cost.
+  # Reuses the Directus storage account (not a dedicated one - avoids extra
+  # Storage Account cost); the deployment container above is dedicated.
   storage_account_name       = azurerm_storage_account.content.name
   storage_account_access_key = azurerm_storage_account.content.primary_access_key
+  storage_container_endpoint = "${azurerm_storage_account.content.primary_blob_endpoint}${azurerm_storage_container.functions_deployment.name}"
 
   cors_allowed_origin     = "https://${module.static_web_app.default_host_name}"
   from_email_address      = var.from_email_address
@@ -384,8 +475,6 @@ module "functions" {
   acs_resource_name = var.acs_resource_name
 
   tags = local.functions_tags
-
-  depends_on = [data.azurerm_service_plan.existing]
 }
 
 resource "azurerm_key_vault_secret" "azure_function_key" {
@@ -395,52 +484,19 @@ resource "azurerm_key_vault_secret" "azure_function_key" {
   key_vault_id = module.key_vault.vault_id
 }
 
-# Runs Directus/setup.js against the deployed instance on every apply:
-# creates every content collection (if missing), grants public read/create
-# permissions, seeds initial content (only if empty), and creates/re-syncs the
-# "Notify on Contact Submission" Flow so its webhook always points at
-# {{$env.AZURE_FUNCTION_URL}} / {{$env.AZURE_FUNCTION_KEY}} instead of a
-# hardcoded URL/key. Fully idempotent (every step in setup.js skips work
-# that's already done) - no manual bootstrap step, no manual Flow creation,
-# no manual permission grant in the Directus UI. Zero Azure cost: this runs
-# locally on the machine executing `terraform apply`, not as an Azure
-# resource.
-#
-# The admin token is fetched from Key Vault at execution time inside
-# setup.js itself via the Azure SDK (DefaultAzureCredential + SecretClient -
-# same pattern already used by functions/send-contact-email), authenticating
-# with whatever's already logged in (`az login` locally). Only the
-# (non-secret) vault name flows through Terraform's config/state for this
-# resource - the token itself never does. The deployer already has "Key
-# Vault Secrets User" on this vault (module.key_vault), so no extra access is
-# needed. The token still exists in plaintext in random_password
-# .directus_admin_token's own state (inherent to how Terraform tracks
-# generated values) - this only avoids a second, avoidable copy.
-resource "null_resource" "directus_bootstrap" {
-  count = var.enable_app_service ? 1 : 0
+# NOTE: Storage network lockdown is managed INLINE on azurerm_storage_account
+# .content (network_rules block) - see that resource. Terraform owns
+# default_action on every apply, so it flips Deny/Allow automatically by tier
+# with no manual az command.
 
-  triggers = {
-    # function_url only, not function_key: the Flow operation is written with
-    # the {{$env.AZURE_FUNCTION_KEY}} placeholder (never the literal key -
-    # see FLOW_OPERATION_OPTIONS in setup.js), so a key rotation doesn't
-    # actually change anything this script writes. Tracking it here would
-    # only store the raw secret in this resource's state for no benefit.
-    function_url      = "https://${module.functions[0].default_hostname}/api/send-contact-email"
-    setup_script_hash = filesha1("${path.module}/../../Directus/setup.js")
-    package_json_hash = filesha1("${path.module}/../../Directus/package.json")
-  }
-
-  provisioner "local-exec" {
-    command     = "npm install --prefix \"${path.module}/../../Directus\" --no-audit --no-fund && node \"${path.module}/../../Directus/setup.js\""
-    interpreter = ["bash", "-c"]
-    environment = {
-      DIRECTUS_URL         = module.app_service[0].app_service_url
-      AZURE_KEY_VAULT_NAME = module.key_vault.vault_name
-    }
-  }
-
-  depends_on = [module.app_service, module.functions, azurerm_key_vault_secret.admin_token]
-}
+# Directus bootstrap (setup.js) is NOT run by Terraform. It runs as a
+# post-deploy job in .github/workflows/directus-appservice.yml, so it fires
+# only after the Directus container is deployed and healthy - the correct
+# ordering, and it keeps Terraform to infrastructure-only (no local-exec /
+# Node dependency on the applier's machine). That job's OIDC identity needs
+# "Key Vault Secrets User" on the vault to read the admin token (Contributor
+# is control-plane only and does NOT grant data-plane secret reads on an
+# RBAC-authorized vault) - granted manually in the Azure Portal.
 
 # NOTE: App Service -> Key Vault access is an RBAC role assignment inside
 # the app-service module (vault uses rbac_authorization_enabled; legacy
@@ -451,9 +507,6 @@ resource "null_resource" "directus_bootstrap" {
 # (azurerm_role_assignment.app_service_storage) - this duplicate top-level
 # resource was removed after it collided with the module's grant (Azure
 # rejects two identical role assignments on the same scope/principal/role).
-
-# Get current Azure context
-data "azurerm_client_config" "current" {}
 
 # ============================================================
 # GITHUB ACTIONS SECRETS
@@ -516,3 +569,7 @@ resource "github_actions_secret" "azure_functions_app_name" {
   secret_name = "AZURE_FUNCTIONS_APP_NAME"
   value       = module.functions[0].function_app_name
 }
+
+# The Function App lives in the same main resource group as everything else
+# (Flex Consumption needs no dedicated RG) - functions.yml uses the shared
+# AZURE_RESOURCE_GROUP secret, no separate one needed.

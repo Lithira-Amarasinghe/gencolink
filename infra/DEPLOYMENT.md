@@ -21,6 +21,35 @@ git history if you need them.)
 Flow: contact form → Directus `contact_submissions` → Directus Flow webhook →
 Function → ACS email.
 
+## Network security (tier-dependent, automatic)
+
+The Storage/SQL firewall strategy is derived from `app_service_sku`:
+
+- **B1 and above**: a VNet + delegated subnet is created; Directus and the
+  Function App use regional VNet integration, and Storage/SQL firewalls allow
+  that **subnet** via service endpoints (`Microsoft.Sql`,
+  `Microsoft.Storage.Global`). No IP rules, no dependency on mutable outbound
+  IPs, lockdown active from the first apply.
+- **F1/D1 (Free/Shared)**: VNet integration isn't supported on these tiers, so
+  firewalls fall back to **IP rules** scoped to the App Service's outbound IPs.
+
+Both paths deploy in a **single `terraform apply`** — no read-back data
+sources, no multi-phase bootstrap flags.
+
+### Functions hosting is tier-dependent
+
+- **B1+**: the Function App shares Directus's App Service Plan, in the main RG.
+- **F1/D1**: Azure forbids Function Apps on Free/Shared plans, so the Function
+  App runs on its own **Consumption (Y1) plan in a dedicated resource group**
+  (`gencolink-prod-functions-rg`). This is Azure's documented requirement — a
+  resource group that hosts a Free/Shared Linux web-app plan cannot also host a
+  Linux Consumption plan. Consumption is $0 fixed (1M free executions/month).
+
+  ⚠️ **Extra permission on F1/D1**: creating that resource group requires the
+  deploying identity to have rights at the **subscription** scope (e.g.
+  Contributor on the subscription), not just Contributor on the `gencolink` RG.
+  If your identity is scoped only to the RG, either widen it or switch to B1.
+
 ## Prerequisites (one-time)
 
 1. **Azure**: an existing resource group named `gencolink`; `az login`; correct
@@ -65,13 +94,19 @@ terraform plan     # review
 terraform apply
 ```
 
-`apply` provisions everything above and, via `null_resource.directus_bootstrap`,
-runs `Directus/setup.js` against the deployed Directus to create collections,
-grant public read/create permissions, seed content, and create the
-contact-email Flow — **no manual Directus UI steps**. It also auto-pushes the
-resource names/URLs/tokens it generates into GitHub Actions secrets.
+`apply` provisions everything above and auto-pushes the resource
+names/URLs/tokens it generates into GitHub Actions secrets. It does **not** run
+`Directus/setup.js` — that now runs in CI (see below), after the Directus
+container is deployed and healthy.
 
 There is no CI job that runs Terraform — you always run `apply` yourself.
+
+**One-time OIDC grant for the bootstrap job:** the `directus-appservice.yml`
+bootstrap job reads the Directus admin token from Key Vault, which needs a
+data-plane role (Contributor is control-plane only and won't work on an
+RBAC-authorized vault). Grant the GitHub Actions OIDC service principal
+**"Key Vault Secrets User"** on the vault — done manually in the Azure Portal
+(Key Vault → Access control (IAM) → Add role assignment), not by Terraform.
 
 ## Deploy the application code (automatic)
 

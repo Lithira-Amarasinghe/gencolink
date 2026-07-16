@@ -13,10 +13,6 @@ terraform {
       source  = "integrations/github"
       version = "~> 6.0"
     }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.2"
-    }
   }
 
   # Remote state, encrypted at rest in Azure Storage. use_azuread_auth means

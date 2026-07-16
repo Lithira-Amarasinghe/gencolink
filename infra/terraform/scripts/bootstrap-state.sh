@@ -205,7 +205,7 @@ if az storage account show -n "${STORAGE_ACCOUNT}" -g "${RESOURCE_GROUP}" >/dev/
   skip "already exists in this resource group"
 else
   if ! $DRY_RUN; then
-    AVAILABILITY="$(az storage account check-name-availability -n "${STORAGE_ACCOUNT}" -o json)"
+    AVAILABILITY="$(az storage account check-name -n "${STORAGE_ACCOUNT}" -o json)"
     NAME_AVAILABLE="$(echo "${AVAILABILITY}" | grep -o '"nameAvailable": *[a-z]*' | grep -o '[a-z]*$')"
     if [[ "${NAME_AVAILABLE}" == "false" ]]; then
       REASON="$(echo "${AVAILABILITY}" | grep -o '"message": *"[^"]*"' | sed 's/"message": *"//;s/"$//')"

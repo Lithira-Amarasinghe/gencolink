@@ -27,13 +27,34 @@ resource "azurerm_mssql_database" "directus" {
   tags         = var.tags
 }
 
-# Scoped to specific outbound IPs instead of the broad AllowAzureServices
-# (0.0.0.0) rule, which lets ANY Azure tenant's resources attempt a
-# connection. Free - no VNet/Private Endpoint cost.
-resource "azurerm_mssql_firewall_rule" "app_service_outbound" {
-  for_each         = toset(var.allowed_ip_addresses)
-  name             = "AppService-${replace(each.value, ".", "-")}"
+# Free/Shared plan tiers only (F1/D1 - no VNet integration available there).
+# NOTE: this is the broad "AllowAllWindowsAzureIps" rule (0.0.0.0-0.0.0.0),
+# not a per-IP rule scoped to just this App Service. A per-IP rule is not
+# possible in a single apply: the App Service's actual outbound IPs are
+# assigned by Azure at creation time and are NOT known until after apply,
+# so a for_each keyed on them fails at plan time ("Invalid for_each argument
+# ... known only after apply"). The only alternatives are a genuine
+# two-phase apply (rejected as error-prone/tedious) or VNet integration
+# (unavailable on F1/D1). This broad rule is the standard, documented
+# trade-off for free/dev-test tiers (see Microsoft's own guidance: "Dev/test,
+# low data sensitivity -> Public endpoint with service firewall"). Still
+# requires the SQL admin credentials to actually connect - this only widens
+# which network can attempt the connection. B1+ uses the strict, IP-free
+# subnet rule below instead.
+resource "azurerm_mssql_firewall_rule" "allow_azure_services" {
+  count            = var.allow_azure_services ? 1 : 0
+  name             = "AllowAllWindowsAzureIps"
   server_id        = azurerm_mssql_server.directus.id
-  start_ip_address = each.value
-  end_ip_address   = each.value
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
+}
+
+# VNet rule: allows the App Service integration subnet via its Microsoft.Sql
+# service endpoint. Preferred over IP rules (B1+ tiers) - survives outbound-IP
+# changes and needs no two-phase bootstrap. Also free.
+resource "azurerm_mssql_virtual_network_rule" "app_service_subnet" {
+  for_each  = toset(var.allowed_subnet_ids)
+  name      = "AppServiceSubnet-${substr(sha1(each.value), 0, 8)}"
+  server_id = azurerm_mssql_server.directus.id
+  subnet_id = each.value
 }

@@ -88,3 +88,46 @@ jobs:
         run: |
           echo "❌ Deployment failed. Check Azure Portal > App Service > Activity Log for details"
           exit 1
+
+  bootstrap:
+    name: Bootstrap Directus (setup.js)
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'Directus/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: Directus
+        run: npm ci
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # setup.js creates collections, grants public read/create permissions,
+      # seeds content (only if empty), and creates/re-syncs the contact-email
+      # Flow. Fully idempotent. It reads the Directus admin token from Key
+      # Vault via DefaultAzureCredential, which resolves the az login session
+      # established above (the OIDC principal needs "Key Vault Secrets User" -
+      # granted by Terraform's github_actions_kv_secrets_user role assignment).
+      - name: Run Directus bootstrap (setup.js)
+        working-directory: Directus
+        env:
+          DIRECTUS_URL: ${{ secrets.AZURE_APPSERVICE_URL }}
+          AZURE_KEY_VAULT_NAME: ${{ secrets.AZURE_KEY_VAULT_NAME }}
+        run: node setup.js

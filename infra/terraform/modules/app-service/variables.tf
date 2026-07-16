@@ -18,10 +18,15 @@ variable "environment" {
   description = "Environment (e.g., prod)"
 }
 
-variable "sku" {
+variable "service_plan_id" {
   type        = string
-  description = "App Service Plan SKU (B1 minimum; F1/Free is unusable for Directus)"
-  default     = "B1"
+  description = "ID of the (root-owned) App Service Plan to deploy onto - shared with the Functions app"
+}
+
+variable "always_on" {
+  type        = bool
+  description = "Keep the app loaded at all times. Required for reliable operation on B1+; NOT SUPPORTED on F1/D1 - must be false there"
+  default     = true
 }
 
 variable "key_vault_id" {
@@ -48,6 +53,12 @@ variable "directus_secrets" {
   type        = map(string)
   description = "Sensitive Directus environment variables (stored in Key Vault)"
   sensitive   = true
+}
+
+variable "vnet_integration_subnet_id" {
+  type        = string
+  description = "Subnet ID for regional VNet integration (delegated to Microsoft.Web/serverFarms). null disables integration - required on F1/D1, which don't support it."
+  default     = null
 }
 
 variable "tags" {

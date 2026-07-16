@@ -2,23 +2,21 @@ locals {
   app_name = "${var.project_name}-${var.environment}"
 }
 
-# App Service Plan (shared by Directus and the Functions app; B1 minimum)
-resource "azurerm_service_plan" "main" {
-  name                = "${local.app_name}-asp"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  os_type             = "Linux"
-  sku_name            = var.sku
+# The App Service Plan is owned by the ROOT module (shared with the
+# Functions app) and passed in as var.service_plan_id - both apps referencing
+# one root-level Plan keeps the dependency graph acyclic.
 
-  tags = var.tags
-}
-
-# Linux Web App (Node.js 20)
+# Linux Web App (Directus container)
 resource "azurerm_linux_web_app" "main" {
   name                = "${local.app_name}-appservice"
   location            = var.location
   resource_group_name = var.resource_group_name
-  service_plan_id     = azurerm_service_plan.main.id
+  service_plan_id     = var.service_plan_id
+
+  # Regional VNet integration (B1+ only; null on F1/D1). Outbound traffic to
+  # SQL/Storage then originates from the integration subnet, matched by their
+  # service-endpoint firewall rules.
+  virtual_network_subnet_id = var.vnet_integration_subnet_id
 
   # Application settings: Directus config + Key Vault secret references.
   # Secrets never appear as plaintext in app settings - App Service resolves
@@ -44,8 +42,14 @@ resource "azurerm_linux_web_app" "main" {
       docker_registry_url = "https://index.docker.io"
     }
 
-    # Always-on only for paid tiers (not F1 free)
-    always_on = var.sku != "F1" ? true : false
+    # Always-on only for paid tiers (not supported on F1/D1 - caller decides)
+    always_on = var.always_on
+
+    # Route ALL outbound traffic through the VNet when integrated. Required:
+    # service endpoints target the services' public IP space, which is only
+    # routed via the subnet (and thus matched by the firewall rules) when
+    # route-all is on.
+    vnet_route_all_enabled = var.vnet_integration_subnet_id != null
 
     # Health check configuration - /server/ping (not /server/health) because
     # Directus 12.x's public role denies /server/health by default
@@ -82,6 +86,3 @@ resource "azurerm_role_assignment" "app_service_storage" {
 
   depends_on = [azurerm_linux_web_app.main]
 }
-
-# Get current Azure subscription context
-data "azurerm_client_config" "current" {}

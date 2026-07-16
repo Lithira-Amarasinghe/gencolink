@@ -20,18 +20,23 @@ variable "environment" {
 
 variable "service_plan_id" {
   type        = string
-  description = "App Service Plan ID to deploy onto (shares Directus's plan - no extra Plan cost)"
+  description = "Flex Consumption (FC1) App Service Plan ID to deploy onto - dedicated to Functions, independent of Directus's plan/tier"
 }
 
 variable "storage_account_name" {
   type        = string
-  description = "Storage account name for Functions' internal bookkeeping (reuses Directus's account - no extra Storage cost)"
+  description = "Storage account name (reuses Directus's account - no extra Storage cost)"
 }
 
 variable "storage_account_access_key" {
   type        = string
-  description = "Storage account access key"
+  description = "Storage account access key - used for Flex Consumption's required deployment-package storage auth"
   sensitive   = true
+}
+
+variable "storage_container_endpoint" {
+  type        = string
+  description = "Full blob endpoint URL of the dedicated container for Flex Consumption's deployment package (e.g. https://<account>.blob.core.windows.net/<container>)"
 }
 
 variable "cors_allowed_origin" {
