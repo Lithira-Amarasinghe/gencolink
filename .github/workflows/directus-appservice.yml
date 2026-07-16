@@ -87,6 +87,71 @@ jobs:
           echo "Last response body:"; cat /tmp/ping_body || true
           exit 1
 
+      # READINESS probe: /server/health is the DEEP check - it reports the
+      # database, cache and storage state, unlike /server/ping which only
+      # proves the process answers. Directus 12.x denies it to the public role,
+      # so it needs the admin token; this job's OIDC identity holds "Key Vault
+      # Secrets User" on the vault, so it can read that token directly.
+      #
+      # This lives here (not in the bootstrap job) so THIS job fully owns the
+      # question "is Directus deployed and healthy?". The bootstrap job then
+      # only owns "put content in". A red job now tells you which of the two
+      # actually broke. setup.js keeps its own equivalent check for when it's
+      # run standalone (e.g. local `docker compose`), where this job does not
+      # exist.
+      - name: Verify Directus is healthy (readiness probe)
+        env:
+          AZURE_KEY_VAULT_NAME: ${{ secrets.AZURE_KEY_VAULT_NAME }}
+        run: |
+          set -euo pipefail
+          URL="https://${{ env.AZURE_APPSERVICE_NAME }}.azurewebsites.net/server/health"
+
+          # Fail fast and clearly if the data-plane role is missing - Contributor
+          # on the subscription does NOT grant secret reads on an RBAC vault.
+          if ! TOKEN=$(az keyvault secret show \
+                --vault-name "$AZURE_KEY_VAULT_NAME" \
+                --name admin-token \
+                --query value -o tsv 2>/tmp/kv_err); then
+            echo "❌ Could not read 'admin-token' from Key Vault '$AZURE_KEY_VAULT_NAME'."
+            echo "   The GitHub OIDC identity needs the 'Key Vault Secrets User' role on that vault."
+            cat /tmp/kv_err
+            exit 1
+          fi
+
+          echo "Probing $URL ..."
+          # NOTE: /server/health follows the health-check response format and is
+          # NOT wrapped in Directus's usual {"data": ...} envelope - the fields
+          # are top-level: {"status","releaseId","serviceId","checks"}.
+          # 40 x 3s = ~2 min. Covers a database still accepting its first
+          # connections after a cold container start.
+          for i in {1..40}; do
+            HTTP_CODE=$(curl -s -o /tmp/health_body -w "%{http_code}" \
+              -H "Authorization: Bearer $TOKEN" "$URL" || echo "000")
+            STATUS=$(jq -r '.status // empty' /tmp/health_body 2>/dev/null || echo "")
+
+            if [ "$HTTP_CODE" = "200" ] && [ "$STATUS" = "ok" ]; then
+              echo "✓ Directus is healthy (attempt $i)"
+              exit 0
+            fi
+
+            # "warn" = a dependency is degraded but functional; Directus is
+            # serving. This is EXPECTED here: Azure SQL Basic regularly exceeds
+            # the 150ms mssql:responseTime threshold, so gating strictly on
+            # "ok" would never pass. Surface it, don't block.
+            if [ "$HTTP_CODE" = "200" ] && [ "$STATUS" = "warn" ]; then
+              DEGRADED=$(jq -r '[.checks | to_entries[] | .key as $k | .value[] | select(.status != "ok") | "\($k)=\(.status)"] | join(", ")' /tmp/health_body 2>/dev/null || echo "unknown")
+              echo "::warning::Directus healthy but degraded (status=warn): ${DEGRADED}"
+              exit 0
+            fi
+
+            echo "Attempt $i/40: HTTP $HTTP_CODE status=${STATUS:-none}"
+            sleep 3
+          done
+
+          echo "❌ Directus answers, but never became healthy (~2 min)."
+          echo "Last health response:"; cat /tmp/health_body || true
+          exit 1
+
       - name: Deployment summary
         if: success()
         run: |
@@ -144,11 +209,13 @@ jobs:
       # enough. That grant is applied manually in the Azure Portal, not by
       # Terraform.
       #
-      # This job owns the DEEP readiness gate: with the token in hand, setup.js
-      # polls /server/health (database/cache/storage) before writing anything,
-      # so a cold database is a retry with a clear reason rather than a random
-      # mid-bootstrap failure. The deploy job's ping probe above only covers
-      # liveness.
+      # Separation of concerns: the job above owns "is Directus deployed and
+      # healthy?" (liveness + readiness). This job owns only "put the content
+      # in". So if this job goes red, it's a bootstrap/content problem - not an
+      # infrastructure one. setup.js still repeats its own health check
+      # internally, which is intentional: it must stay safe to run standalone
+      # (local `docker compose`), where the job above doesn't exist. That costs
+      # one extra HTTP call here and buys a script that's correct anywhere.
       - name: Run Directus bootstrap (setup.js)
         working-directory: Directus
         env:

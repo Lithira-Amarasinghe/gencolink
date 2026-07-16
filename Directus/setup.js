@@ -359,8 +359,11 @@ async function waitForDirectus(maxWaitMs = 180_000) {
 
 // Summarises which dependency checks are unhealthy, so a failure names the
 // real cause ("database down") instead of just "not healthy".
+// NOTE: /server/health is NOT wrapped in Directus's usual {"data": ...}
+// envelope - it follows the health-check response format, so "status" and
+// "checks" are top-level fields.
 function describeChecks(body) {
-  const checks = body?.data?.checks ?? {};
+  const checks = body?.checks ?? {};
   const failing = [];
   for (const [name, entries] of Object.entries(checks)) {
     for (const entry of entries ?? []) {
@@ -387,14 +390,16 @@ async function waitForHealthy(token, maxWaitMs = 120_000) {
     try {
       const res = await request('GET', '/server/health', undefined, token);
       const body = await res.json().catch(() => null);
-      const status = body?.data?.status;
+      const status = body?.status;
 
       if (res.ok && status === 'ok') {
         console.log(' healthy.\n');
         return;
       }
-      // "warn" = a non-critical check is degraded but Directus is serving.
-      // Proceed (the bootstrap is idempotent and re-runnable) but say so.
+      // "warn" = a dependency is degraded but functional; Directus is serving.
+      // EXPECTED on the cheap tiers: Azure SQL Basic regularly exceeds the
+      // 150ms mssql:responseTime threshold, so gating strictly on "ok" would
+      // never pass. Proceed (the bootstrap is idempotent) but say so.
       if (res.ok && status === 'warn') {
         console.log(' degraded.\n');
         console.log(`  WARN: ${describeChecks(body)}\n`);
