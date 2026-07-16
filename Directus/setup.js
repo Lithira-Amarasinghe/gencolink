@@ -317,17 +317,27 @@ async function request(method, path, body, token) {
 }
 
 // ─── Wait / Auth ──────────────────────────────────────────────────────────────
+//
+// Startup gating follows the standard liveness -> readiness split:
+//   1. waitForDirectus()  - LIVENESS.  /server/ping, public, no token. Only
+//                           proves the HTTP process answers.
+//   2. authenticate()     - obtains the admin token.
+//   3. waitForHealthy()   - READINESS. /server/health, needs the token, and
+//                           reports the real dependency state (database,
+//                           cache, storage). This is what actually tells us
+//                           the bootstrap can safely start writing.
 
-// Polls /server/ping, NOT /server/health: Directus 12.x's public role denies
-// /server/health by default, so an unauthenticated probe gets 403 and this
-// would spin until timeout even though Directus is up and serving. This runs
-// before authenticate(), so the probe has to be a public endpoint - /server/ping
-// is public and returns "pong". Same endpoint the App Service health check and
-// the CI health gate already use.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// LIVENESS probe. Deliberately /server/ping, NOT /server/health: Directus 12.x
+// denies /server/health to the public role, so an unauthenticated probe gets
+// 403 and would spin until timeout even though Directus is up. This runs
+// before we hold a token, so the probe must be a public endpoint. Same
+// endpoint the App Service health check and the CI liveness gate use.
 async function waitForDirectus(maxWaitMs = 180_000) {
   const start = Date.now();
   let lastStatus = 'no response';
-  process.stdout.write('Waiting for Directus');
+  process.stdout.write('Waiting for Directus (liveness)');
   while (Date.now() - start < maxWaitMs) {
     try {
       const res = await fetch(`${BASE}/server/ping`);
@@ -337,7 +347,7 @@ async function waitForDirectus(maxWaitMs = 180_000) {
       lastStatus = err.message;
     }
     process.stdout.write('.');
-    await new Promise((r) => setTimeout(r, 2000));
+    await sleep(2000);
   }
   // Report what actually went wrong - a bare "not ready" hides an auth/URL
   // problem behind what looks like a slow boot.
@@ -347,12 +357,69 @@ async function waitForDirectus(maxWaitMs = 180_000) {
   );
 }
 
+// Summarises which dependency checks are unhealthy, so a failure names the
+// real cause ("database down") instead of just "not healthy".
+function describeChecks(body) {
+  const checks = body?.data?.checks ?? {};
+  const failing = [];
+  for (const [name, entries] of Object.entries(checks)) {
+    for (const entry of entries ?? []) {
+      if (entry?.status && entry.status !== 'ok') {
+        failing.push(`${name}=${entry.status}${entry.output ? ` (${entry.output})` : ''}`);
+      }
+    }
+  }
+  return failing.length ? failing.join(', ') : 'no failing checks reported';
+}
+
+// READINESS probe. /server/health is a DEEP check - it reports database,
+// cache and storage health, unlike /server/ping which only proves the process
+// answers. Directus returns status "ok" | "warn" | "error" (HTTP 503 on
+// error). Gating on this means a cold or still-connecting database surfaces
+// as a retry with a clear reason, rather than as a confusing failure on the
+// first real API call. Requires the admin token (public role is denied), so
+// it must run after authenticate().
+async function waitForHealthy(token, maxWaitMs = 120_000) {
+  const start = Date.now();
+  let last = 'no response';
+  process.stdout.write('Checking Directus health (readiness)');
+  while (Date.now() - start < maxWaitMs) {
+    try {
+      const res = await request('GET', '/server/health', undefined, token);
+      const body = await res.json().catch(() => null);
+      const status = body?.data?.status;
+
+      if (res.ok && status === 'ok') {
+        console.log(' healthy.\n');
+        return;
+      }
+      // "warn" = a non-critical check is degraded but Directus is serving.
+      // Proceed (the bootstrap is idempotent and re-runnable) but say so.
+      if (res.ok && status === 'warn') {
+        console.log(' degraded.\n');
+        console.log(`  WARN: ${describeChecks(body)}\n`);
+        return;
+      }
+      last = status ? `status="${status}": ${describeChecks(body)}` : `HTTP ${res.status}`;
+    } catch (err) {
+      last = err.message;
+    }
+    process.stdout.write('.');
+    await sleep(2000);
+  }
+  throw new Error(
+    `Directus is up but never became healthy within ${maxWaitMs / 1000}s. Last: ${last}`,
+  );
+}
+
 async function authenticate() {
-  // Key Vault (preferred for Terraform): the admin token never touches an
-  // env var, Terraform's own config, or its state for this script - only the
-  // (non-secret) vault name does. DefaultAzureCredential authenticates with
-  // whatever's available: `az login` locally, a Managed Identity in Azure,
-  // or any other credential in its default chain.
+  // Key Vault (preferred for CI): the admin token never touches an env var or
+  // any Terraform config/state - only the (non-secret) vault name does.
+  // DefaultAzureCredential authenticates with whatever's available: `az login`
+  // locally, the GitHub OIDC session in CI, or a Managed Identity in Azure.
+  // Not retried: a failure here is a permissions/config problem (the identity
+  // needs "Key Vault Secrets User" on the vault), which retrying won't fix -
+  // fail fast with the real error instead of burning the timeout.
   if (KEY_VAULT_NAME) {
     const { DefaultAzureCredential } = require('@azure/identity');
     const { SecretClient } = require('@azure/keyvault-secrets');
@@ -365,10 +432,24 @@ async function authenticate() {
   // entirely.
   if (STATIC_TOKEN) return STATIC_TOKEN;
 
-  const res = await request('POST', '/auth/login', { email: EMAIL, password: PASS });
-  if (!res.ok) throw new Error(`Auth failed: ${res.status} ${await res.text()}`);
-  const { data } = await res.json();
-  return data.access_token;
+  // Login path (local dev). Unlike the two above, this hits Directus - and
+  // therefore the database - so it can legitimately fail while the DB is
+  // still warming up even though /server/ping already answers. Retry briefly
+  // before giving up.
+  const maxAttempts = 5;
+  let lastError = '';
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const res = await request('POST', '/auth/login', { email: EMAIL, password: PASS });
+    if (res.ok) {
+      const { data } = await res.json();
+      return data.access_token;
+    }
+    lastError = `${res.status} ${await res.text()}`;
+    // 401/403 = wrong credentials; that will never succeed on retry.
+    if (res.status === 401 || res.status === 403) break;
+    if (attempt < maxAttempts) await sleep(3000);
+  }
+  throw new Error(`Auth failed: ${lastError}`);
 }
 
 // ─── Collection builders ───────────────────────────────────────────────────────
@@ -1093,6 +1174,8 @@ async function main() {
   console.log('Authenticating...');
   const token = await authenticate();
   console.log('  OK\n');
+
+  await waitForHealthy(token);
 
   console.log('Setting up collections...');
   await ensureServicesCollection(token);

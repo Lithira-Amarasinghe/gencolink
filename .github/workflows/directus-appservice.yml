@@ -36,7 +36,10 @@ jobs:
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }}
           echo "✓ App Service restarted - pulling latest Directus image"
 
-      - name: Wait for App Service startup
+      # Control-plane gate: the ARM resource reports "Running". Necessary but
+      # NOT sufficient - it says the site is provisioned, not that the
+      # container inside it is serving. The liveness probe below covers that.
+      - name: Wait for App Service to report Running
         run: |
           echo "Waiting for App Service to start..."
           for i in {1..60}; do
@@ -46,31 +49,42 @@ jobs:
               --query 'state' -o tsv)
             if [ "$STATUS" = "Running" ]; then
               echo "✓ App Service is running (attempt $i)"
-              break
+              exit 0
             fi
             echo "Attempt $i/60: Status is $STATUS"
             sleep 3
           done
+          # Previously this loop just fell through, so a site that never
+          # started still passed the step and failed confusingly later.
+          echo "❌ App Service never reached 'Running' after 60 attempts (~3 min)"
+          exit 1
 
-      - name: Check Directus health
+      # LIVENESS probe: /server/ping is public and only proves the Directus
+      # process answers HTTP. It is deliberately NOT /server/health - Directus
+      # 12.x denies that to the public role (403), and we hold no admin token
+      # at this stage. The DEEP readiness check (database/cache/storage) runs
+      # in the bootstrap job below, inside setup.js, which does have the token.
+      - name: Wait for Directus to answer (liveness probe)
         run: |
-          echo "Checking Directus health endpoint..."
-          for i in {1..30}; do
-            RESPONSE=$(curl -s -w "\n%{http_code}" https://${{ env.AZURE_APPSERVICE_NAME }}.azurewebsites.net/server/ping)
-            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-            BODY=$(echo "$RESPONSE" | head -n-1)
+          URL="https://${{ env.AZURE_APPSERVICE_NAME }}.azurewebsites.net/server/ping"
+          echo "Probing $URL ..."
+          # 60 x 3s = ~3 min. A Directus container cold start on the F1/Free
+          # tier (no always-on) regularly exceeds the old 60s budget.
+          for i in {1..60}; do
+            HTTP_CODE=$(curl -s -o /tmp/ping_body -w "%{http_code}" "$URL" || echo "000")
 
             if [ "$HTTP_CODE" = "200" ]; then
-              echo "✓ Directus health check passed (attempt $i)"
-              echo "Response: $BODY"
+              echo "✓ Directus is answering (attempt $i)"
+              echo "Response: $(cat /tmp/ping_body)"
               exit 0
             fi
 
-            echo "Attempt $i/30: HTTP $HTTP_CODE"
-            sleep 2
+            echo "Attempt $i/60: HTTP $HTTP_CODE"
+            sleep 3
           done
 
-          echo "❌ Directus health check failed after 30 attempts"
+          echo "❌ Directus did not answer /server/ping after 60 attempts (~3 min)"
+          echo "Last response body:"; cat /tmp/ping_body || true
           exit 1
 
       - name: Deployment summary
@@ -121,10 +135,20 @@ jobs:
 
       # setup.js creates collections, grants public read/create permissions,
       # seeds content (only if empty), and creates/re-syncs the contact-email
-      # Flow. Fully idempotent. It reads the Directus admin token from Key
-      # Vault via DefaultAzureCredential, which resolves the az login session
-      # established above (the OIDC principal needs "Key Vault Secrets User" -
-      # granted by Terraform's github_actions_kv_secrets_user role assignment).
+      # Flow. Fully idempotent.
+      #
+      # It reads the Directus admin token from Key Vault via
+      # DefaultAzureCredential, which resolves the az login session established
+      # above. The OIDC principal must hold "Key Vault Secrets User" on the
+      # vault - a DATA-plane role; Contributor is control-plane only and is NOT
+      # enough. That grant is applied manually in the Azure Portal, not by
+      # Terraform.
+      #
+      # This job owns the DEEP readiness gate: with the token in hand, setup.js
+      # polls /server/health (database/cache/storage) before writing anything,
+      # so a cold database is a retry with a clear reason rather than a random
+      # mid-bootstrap failure. The deploy job's ping probe above only covers
+      # liveness.
       - name: Run Directus bootstrap (setup.js)
         working-directory: Directus
         env:
