@@ -913,11 +913,48 @@ async function ensureCompanyDetailsCollection(token) {
 }
 
 // ─── Permissions ──────────────────────────────────────────────────────────────
+//
+// Directus 11 replaced role-based permissions with POLICY-based ones, and the
+// deployed image is 12.x. A permission now belongs to a `policy`, never to a
+// `role` directly - posting `{ role: null, ... }` (the Directus 10 way) fails
+// with: Validation failed for field "policy". Value is required.
+// Roles/users are linked to policies through `directus_access`; the PUBLIC
+// (unauthenticated) caller is the access row that has neither a role nor a
+// user. Resolve the policy that way rather than by name: the public policy is
+// named "$t:public_label", a translation key, which is not a stable identifier.
 
-async function ensurePublicRead(token, collection) {
+let cachedPublicPolicyId = null;
+
+async function getPublicPolicyId(token) {
+  if (cachedPublicPolicyId) return cachedPublicPolicyId;
+
   const res = await request(
     'GET',
-    `/permissions?filter[collection][_eq]=${collection}&filter[action][_eq]=read&filter[role][_null]=true`,
+    '/access?filter[role][_null]=true&filter[user][_null]=true&fields=policy&limit=1',
+    undefined,
+    token,
+  );
+  if (!res.ok) throw new Error(`Could not read access rows: ${res.status} ${await res.text()}`);
+
+  const { data } = await res.json();
+  const policyId = data?.[0]?.policy;
+  if (!policyId) {
+    throw new Error(
+      'Could not resolve the public policy (no directus_access row with a null role and null user). ' +
+      'Expected on Directus 11+; if this is Directus 10 the permissions model is role-based instead.',
+    );
+  }
+
+  cachedPublicPolicyId = policyId;
+  return policyId;
+}
+
+async function ensurePublicRead(token, collection) {
+  const policy = await getPublicPolicyId(token);
+
+  const res = await request(
+    'GET',
+    `/permissions?filter[collection][_eq]=${collection}&filter[action][_eq]=read&filter[policy][_eq]=${policy}`,
     undefined,
     token,
   );
@@ -933,7 +970,7 @@ async function ensurePublicRead(token, collection) {
   const createRes = await request(
     'POST',
     '/permissions',
-    { role: null, collection, action: 'read', fields: '*' },
+    { policy, collection, action: 'read', fields: '*' },
     token,
   );
   if (!createRes.ok) throw new Error(`Create permission for "${collection}" failed: ${await createRes.text()}`);
@@ -1041,9 +1078,12 @@ async function ensureContactSubmissionsCollection(token) {
 }
 
 async function ensurePublicCreate(token, collection) {
+  // Policy-based, not role-based - see getPublicPolicyId() above.
+  const policy = await getPublicPolicyId(token);
+
   const res = await request(
     'GET',
-    `/permissions?filter[collection][_eq]=${collection}&filter[action][_eq]=create&filter[role][_null]=true`,
+    `/permissions?filter[collection][_eq]=${collection}&filter[action][_eq]=create&filter[policy][_eq]=${policy}`,
     undefined,
     token,
   );
@@ -1054,10 +1094,30 @@ async function ensurePublicCreate(token, collection) {
     return;
   }
 
+  // fields: '*' rather than a restricted list (['name','email','company',
+  // 'message']), which is what this used to send.
+  //
+  // WHY: Directus 12 introduced active license enforcement. Self-hosted
+  // instances run on the Core tier by default, and "custom permission rules on
+  // access policies" is a LICENSED feature. A restricted field list - and
+  // likewise `presets` or `validation` - counts as a custom rule, so Directus
+  // rejects it with:
+  //   custom_permission_rules_enabled is a restricted resource (RESOURCE_RESTRICTED)
+  // Only unrestricted access ('*') is permitted on the Core tier.
+  //
+  // TRADE-OFF: the public can therefore also send `status` and `submitted_at`
+  // on a submission, instead of only the four form fields. Impact is limited:
+  // contact_submissions has NO public read permission, so nothing can be read
+  // back, and the notification e-mail is fired by the Flow on item.create
+  // regardless of those values - so the business-critical path is unaffected.
+  // Worst case is a submission that looks pre-"closed" or back-dated in the
+  // admin panel.
+  // To restore field-level restriction, either apply a Directus license or pin
+  // the image to Directus 11.x (policies exist there, without the enforcement).
   const createRes = await request(
     'POST',
     '/permissions',
-    { role: null, collection, action: 'create', fields: ['name', 'email', 'company', 'message'] },
+    { policy, collection, action: 'create', fields: '*' },
     token,
   );
   if (!createRes.ok) throw new Error(`Create permission for "${collection}" failed: ${await createRes.text()}`);
