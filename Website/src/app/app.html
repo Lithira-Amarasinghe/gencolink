@@ -1,4 +1,5 @@
 <header class="site-header" [class.site-header--scrolled]="headerScrolled()">
+  <span class="scroll-progress" aria-hidden="true"></span>
   <a class="brand" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
     <span class="brand-mark" aria-hidden="true"></span>
     {{ contentStore.companyDetails().brandName }}
@@ -10,7 +11,7 @@
     }
   </nav>
 
-  <button class="nav-cta" type="button" (click)="scrollTo('contact')">
+  <button class="nav-cta magnetic" type="button" (click)="scrollTo('contact')">
     <span>Let's Talk</span>
     <svg lucideArrowRight aria-hidden="true"></svg>
   </button>
@@ -42,10 +43,68 @@
 }
 
 <main id="top">
-  <app-hero-video />
+  <!-- ============ HERO — the signal field ============ -->
+  <section class="hero" aria-labelledby="hero-title" (pointermove)="heroPointer($event)">
+    <div class="hero-aurora" aria-hidden="true">
+      <span class="aurora-orb aurora-orb--a" data-parallax="-14"></span>
+      <span class="aurora-orb aurora-orb--b" data-parallax="10"></span>
+      <span class="aurora-orb aurora-orb--c" data-parallax="-6"></span>
+      <span class="hero-glow"></span>
+    </div>
+    <div class="hero-gridlines" aria-hidden="true"></div>
+    <div class="hero-grain" aria-hidden="true"></div>
 
-  <!-- ============ SERVICES — the catalog ledger ============ -->
-  <section id="services" class="services-section" data-fade-in aria-labelledby="services-title">
+    <div class="hero-shell">
+      <p class="hero-kicker" data-hero-item>
+        <span class="hero-kicker-pulse" aria-hidden="true"></span>
+        Software engineering studio
+      </p>
+
+      <h1 id="hero-title" class="hero-title">
+        @for (word of heroTitleWords(); track $index) {
+          <span class="hero-word-mask"><span class="hero-word" data-hero-word>{{ word }}</span></span>
+        }
+        <span class="hero-word-mask">
+          <span class="hero-word hero-word--highlight" data-hero-word>{{ contentStore.hero().titleHighlight }}</span>
+        </span>
+      </h1>
+
+      <div class="hero-lower">
+        <p class="hero-desc" data-hero-item>{{ contentStore.hero().description }}</p>
+        <div class="hero-actions" data-hero-item>
+          <button type="button" class="hero-cta magnetic" (click)="scrollTo('contact')">
+            {{ contentStore.hero().primaryCta }}
+            <svg lucideArrowRight aria-hidden="true"></svg>
+          </button>
+          <button type="button" class="hero-cta hero-cta--ghost magnetic" (click)="scrollTo('services')">
+            {{ contentStore.hero().secondaryCta }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-marquee" data-hero-item aria-hidden="true">
+      <div class="marquee-track">
+        @for (pass of [0, 1]; track pass) {
+          <div class="marquee-group">
+            @for (point of contentStore.hero().proofPoints; track point) {
+              <span class="marquee-item">
+                <span class="marquee-dot"></span>
+                {{ point }}
+              </span>
+            }
+            <span class="marquee-item">
+              <span class="marquee-dot"></span>
+              {{ contentStore.companyDetails().tagline }}
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SERVICES — catalog ledger ============ -->
+  <section id="services" class="services-section" aria-labelledby="services-title">
     <div class="section-shell">
       <div class="services-head">
         @if (contentStore.loading()) {
@@ -108,15 +167,15 @@
     </div>
   </section>
 
-  <!-- ============ WHY — the navy drench ============ -->
-  <section id="why" class="why-section" data-fade-in aria-labelledby="why-title">
+  <!-- ============ WHY — the light inversion ============ -->
+  <section id="why" class="why-section" aria-labelledby="why-title">
     <div class="section-shell why-layout">
       <div class="why-intro">
         @if (contentStore.loading()) {
           <div aria-hidden="true">
-            <span class="skeleton-block skeleton-block--invert skeleton-eyebrow"></span>
-            <span class="skeleton-block skeleton-block--invert skeleton-heading"></span>
-            <span class="skeleton-block skeleton-block--invert skeleton-desc-line"></span>
+            <span class="skeleton-block skeleton-block--light skeleton-eyebrow"></span>
+            <span class="skeleton-block skeleton-block--light skeleton-heading"></span>
+            <span class="skeleton-block skeleton-block--light skeleton-desc-line"></span>
           </div>
         } @else {
           <p class="why-tag" data-reveal>{{ contentStore.whySection().eyebrow }}</p>
@@ -129,9 +188,9 @@
         @if (contentStore.loading()) {
           @for (row of [0, 1, 2]; track row) {
             <li class="value-item value-item--skeleton" aria-hidden="true">
-              <span class="skeleton-block skeleton-block--invert skeleton-value-title"></span>
-              <span class="skeleton-block skeleton-block--invert skeleton-value-body"></span>
-              <span class="skeleton-block skeleton-block--invert skeleton-value-body"></span>
+              <span class="skeleton-block skeleton-block--light skeleton-value-title"></span>
+              <span class="skeleton-block skeleton-block--light skeleton-value-body"></span>
+              <span class="skeleton-block skeleton-block--light skeleton-value-body"></span>
             </li>
           }
         } @else {
@@ -150,7 +209,7 @@
   </section>
 
   <!-- ============ FAQ ============ -->
-  <section id="faq" class="faq-section" data-fade-in aria-labelledby="faq-title">
+  <section id="faq" class="faq-section" aria-labelledby="faq-title">
     <div class="section-shell faq-layout">
       <div class="faq-head">
         @if (contentStore.loading()) {
@@ -199,7 +258,8 @@
   </section>
 
   <!-- ============ CONTACT ============ -->
-  <section id="contact" class="contact-section" data-fade-in aria-labelledby="contact-title">
+  <section id="contact" class="contact-section" aria-labelledby="contact-title">
+    <div class="contact-field" aria-hidden="true"></div>
     <div class="section-shell contact-layout">
       <div class="contact-copy">
         @if (contentStore.loading()) {
@@ -250,7 +310,7 @@
         @if (submitted() && contactForm.invalid) {
           <p class="form-alert" role="alert">Please add your name, a valid email, and a short message.</p>
         }
-        <button class="submit-button" type="submit" [disabled]="submitting()">
+        <button class="submit-button magnetic" type="submit" [disabled]="submitting()">
           @if (submitting()) {
             Sending…
           } @else {
@@ -267,8 +327,8 @@
   <div class="footer-grid">
     <div class="footer-brand" [attr.aria-busy]="contentStore.loading()">
       @if (contentStore.loading()) {
-        <span class="skeleton-block skeleton-block--invert skeleton-footer-brand" aria-hidden="true"></span>
-        <span class="skeleton-block skeleton-block--invert skeleton-footer-tagline" aria-hidden="true"></span>
+        <span class="skeleton-block skeleton-footer-brand" aria-hidden="true"></span>
+        <span class="skeleton-block skeleton-footer-tagline" aria-hidden="true"></span>
       } @else {
         <a class="brand brand--footer" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
           <span class="brand-mark" aria-hidden="true"></span>
@@ -289,9 +349,9 @@
     <div class="footer-col" [attr.aria-busy]="contentStore.loading()">
       <h2>Contact</h2>
       @if (contentStore.loading()) {
-        <span class="skeleton-block skeleton-block--invert skeleton-footer-line" aria-hidden="true"></span>
-        <span class="skeleton-block skeleton-block--invert skeleton-footer-line skeleton-footer-line--short" aria-hidden="true"></span>
-        <span class="skeleton-block skeleton-block--invert skeleton-footer-line" aria-hidden="true"></span>
+        <span class="skeleton-block skeleton-footer-line" aria-hidden="true"></span>
+        <span class="skeleton-block skeleton-footer-line skeleton-footer-line--short" aria-hidden="true"></span>
+        <span class="skeleton-block skeleton-footer-line" aria-hidden="true"></span>
       } @else {
         <a [href]="'mailto:' + contentStore.companyDetails().email">{{ contentStore.companyDetails().email }}</a>
         <a [href]="telHref(contentStore.companyDetails().phonePrimary)">{{

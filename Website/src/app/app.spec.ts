@@ -22,7 +22,11 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Building software that powers a');
+    // The headline is split into per-word masked spans for the entrance
+    // choreography, so textContent has no spaces between words.
+    const words = Array.from(compiled.querySelectorAll('h1 [data-hero-word]')).map((w) => w.textContent?.trim());
+    expect(words).toContain('Building');
+    expect(words).toContain('better tomorrow');
   });
 
   // Regression test. Rows are hidden by GSAP's from-state until their

@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   signal,
@@ -21,7 +22,6 @@ import {
   LucideMenu,
   LucideX,
 } from '@lucide/angular';
-import { HeroVideoComponent } from './hero-video/hero-video.component';
 import { SiteContentService } from './site-content.service';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -29,7 +29,6 @@ gsap.registerPlugin(ScrollTrigger);
 @Component({
   selector: 'app-root',
   imports: [
-    HeroVideoComponent,
     ReactiveFormsModule,
     LucideArrowRight,
     LucideCheckCircle,
@@ -57,6 +56,9 @@ export class App implements AfterViewInit, OnDestroy {
   readonly toast = signal<{ type: 'success' | 'error'; message: string } | null>(null);
   readonly currentYear = new Date().getFullYear();
 
+  /** Hero headline split into words so each can be masked and choreographed. */
+  readonly heroTitleWords = computed(() => this.contentStore.hero().title.split(' '));
+
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly contactForm = this.formBuilder.nonNullable.group({
@@ -81,7 +83,10 @@ export class App implements AfterViewInit, OnDestroy {
    * a blank page.
    */
   private motionContext?: gsap.Context;
+  private introContext?: gsap.Context;
   private headerTrigger?: ScrollTrigger;
+  private introPlayed = false;
+  private magnetic: { el: HTMLElement; onMove: (e: PointerEvent) => void; onLeave: () => void }[] = [];
 
   constructor() {
     void this.contentStore.load();
@@ -99,7 +104,9 @@ export class App implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
+    this.playHeroIntro();
     this.setupScrollAnimation();
+    this.setupMagnetic();
 
     // Header state is independent of content — set up once.
     this.ngZone.runOutsideAngular(() => {
@@ -115,6 +122,32 @@ export class App implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** One-shot entrance: masked headline words rise, then kicker/desc/actions cascade. */
+  private playHeroIntro(): void {
+    if (this.introPlayed) return;
+    this.introPlayed = true;
+
+    this.ngZone.runOutsideAngular(() => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      this.introContext = gsap.context(() => {
+        const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
+        tl.from('[data-hero-word]', {
+          yPercent: 110,
+          duration: 1.05,
+          stagger: 0.07,
+          delay: 0.15,
+        })
+          .from(
+            '[data-hero-item]',
+            { autoAlpha: 0, y: 24, duration: 0.9, stagger: 0.12 },
+            '-=0.55',
+          )
+          .from('.site-header', { autoAlpha: 0, y: -16, duration: 0.7 }, '-=0.7');
+      });
+    });
+  }
+
   setupScrollAnimation(): void {
     this.ngZone.runOutsideAngular(() => {
       this.motionContext?.revert();
@@ -126,6 +159,16 @@ export class App implements AfterViewInit, OnDestroy {
       }
 
       this.motionContext = gsap.context(() => {
+        // Aurora orbs drift on scroll (scrubbed parallax).
+        gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((el) => {
+          const strength = Number(el.dataset['parallax'] ?? 10);
+          gsap.to(el, {
+            yPercent: strength,
+            ease: 'none',
+            scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 0.6 },
+          });
+        });
+
         // Headings, intro copy, forms — single rise + fade per element.
         gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach((el) => {
           gsap.from(el, {
@@ -167,15 +210,65 @@ export class App implements AfterViewInit, OnDestroy {
             scrollTrigger: { trigger: el, start: 'top 92%' },
           });
         });
+
+        // Footer wordmark slides up as it enters.
+        gsap.from('.footer-wordmark', {
+          yPercent: 40,
+          ease: 'none',
+          scrollTrigger: { trigger: '.site-footer', start: 'top bottom', end: 'bottom bottom', scrub: 0.5 },
+        });
+
+        // Header progress hairline tracks overall page position.
+        gsap.to('.scroll-progress', {
+          scaleX: 1,
+          ease: 'none',
+          scrollTrigger: { start: 0, end: 'max', scrub: 0.3 },
+        });
       });
 
       ScrollTrigger.refresh();
     });
   }
 
+  /** Buttons subtly follow the pointer — the "machined magnet" feel. */
+  private setupMagnetic(): void {
+    this.ngZone.runOutsideAngular(() => {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (!window.matchMedia('(pointer: fine)').matches) return;
+
+      document.querySelectorAll<HTMLElement>('.magnetic').forEach((el) => {
+        const onMove = (e: PointerEvent) => {
+          const r = el.getBoundingClientRect();
+          const x = e.clientX - (r.left + r.width / 2);
+          const y = e.clientY - (r.top + r.height / 2);
+          gsap.to(el, { x: x * 0.22, y: y * 0.22, duration: 0.4, ease: 'power3.out' });
+        };
+        const onLeave = () => {
+          gsap.to(el, { x: 0, y: 0, duration: 0.55, ease: 'elastic.out(1, 0.55)' });
+        };
+        el.addEventListener('pointermove', onMove);
+        el.addEventListener('pointerleave', onLeave);
+        this.magnetic.push({ el, onMove, onLeave });
+      });
+    });
+  }
+
+  /** Pointer-tracked glow inside the hero (CSS vars drive the gradient). */
+  heroPointer(event: PointerEvent): void {
+    const hero = event.currentTarget as HTMLElement;
+    const r = hero.getBoundingClientRect();
+    hero.style.setProperty('--mx', `${(((event.clientX - r.left) / r.width) * 100).toFixed(2)}%`);
+    hero.style.setProperty('--my', `${(((event.clientY - r.top) / r.height) * 100).toFixed(2)}%`);
+  }
+
   ngOnDestroy(): void {
     this.motionContext?.revert();
+    this.introContext?.revert();
     this.headerTrigger?.kill();
+    this.magnetic.forEach(({ el, onMove, onLeave }) => {
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerleave', onLeave);
+    });
     if (this.toastTimer) clearTimeout(this.toastTimer);
   }
 

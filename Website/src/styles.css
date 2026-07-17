@@ -1,28 +1,55 @@
 @import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
+/* ============================================================
+   Semantic token system — dual scheme.
+   Dark (default): the engine room. Rich near-black blues, ice
+   text, aurora-cyan accent, glowing depth.
+   Light: the gallery. Bright paper-blue space, ink text, deep
+   signal accent. Not an inversion — its own design.
+   The "invert" tokens drive the mid-page contrast section (Why),
+   which flips against whichever scheme is active.
+   ============================================================ */
+
 :root {
-  /* Brand — precision-instrument navy system */
-  --ink: #0b1330;
-  --navy: #162162;
-  --blue: #19428b;
-  --signal: #0f80cb;
-  --signal-bright: #4ea8e8;
-  --paper: #fafafa;
-  --white: #ffffff;
-  --slate: #46536b;
-  --slate-soft: #7a89a3;
+  /* Surfaces */
+  --bg: #05091c;
+  --bg-raise: #0b1330;
+  --glass: rgba(5, 9, 28, 0.72);
+  --chip-bg: rgba(238, 243, 251, 0.05);
 
-  /* Inverted (on navy/ink surfaces) */
-  --ice: #eef3fb;
-  --ice-soft: rgba(238, 243, 251, 0.68);
+  /* Text */
+  --text-hi: #ffffff;
+  --text: #eef3fb;
+  --text-body: #b9c5de;
+  --text-dim: #8391b4;
 
-  /* Structural */
-  --line: rgba(22, 33, 98, 0.14);
-  --line-soft: rgba(22, 33, 98, 0.08);
-  --line-ice: rgba(238, 243, 251, 0.18);
-  --line-ice-soft: rgba(238, 243, 251, 0.1);
-  --signal-soft: rgba(15, 128, 203, 0.14);
-  --navy-soft: rgba(22, 33, 98, 0.05);
+  /* Lines */
+  --line-1: rgba(238, 243, 251, 0.14);
+  --line-2: rgba(238, 243, 251, 0.07);
+
+  /* Accent */
+  --accent: #2ec5ff;
+  --accent-2: #4ea8e8;
+  --on-accent: #05091c;
+  --glow: rgba(46, 197, 255, 0.35);
+
+  /* Buttons (header CTA / toast) */
+  --btn-bg: #eef3fb;
+  --btn-fg: #0b1330;
+
+  /* Contrast (Why) section — flips against the scheme */
+  --invert-bg: #f5f7fc;
+  --invert-title: #0b1330;
+  --invert-body: #46536b;
+  --invert-accent: #0f80cb;
+  --invert-line: rgba(22, 33, 98, 0.15);
+  --invert-skel-a: rgba(22, 33, 98, 0.08);
+  --invert-skel-b: rgba(22, 33, 98, 0.15);
+
+  /* Atmosphere */
+  --grain-o: 0.5;
+  --wordmark: rgba(238, 243, 251, 0.05);
+  --error: #ff8f87;
 
   /* Type */
   --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
@@ -33,12 +60,52 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-quart: cubic-bezier(0.5, 0, 0.75, 0);
 
   /* Z scale */
+  --z-mobile-nav: 39;
   --z-header: 40;
-  --z-mobile-nav: 50;
   --z-toast: 60;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f8fd;
+    --bg-raise: #ffffff;
+    --glass: rgba(246, 248, 253, 0.78);
+    --chip-bg: rgba(22, 33, 98, 0.045);
+
+    --text-hi: #0b1330;
+    --text: #182448;
+    --text-body: #46536b;
+    --text-dim: #67759a;
+
+    --line-1: rgba(22, 33, 98, 0.16);
+    --line-2: rgba(22, 33, 98, 0.08);
+
+    --accent: #0f80cb;
+    --accent-2: #19428b;
+    --on-accent: #ffffff;
+    --glow: rgba(15, 128, 203, 0.28);
+
+    --btn-bg: #0b1330;
+    --btn-fg: #ffffff;
+
+    --invert-bg: #101a52;
+    --invert-title: #ffffff;
+    --invert-body: #b9c5de;
+    --invert-accent: #4ea8e8;
+    --invert-line: rgba(238, 243, 251, 0.16);
+    --invert-skel-a: rgba(238, 243, 251, 0.1);
+    --invert-skel-b: rgba(238, 243, 251, 0.2);
+
+    --grain-o: 0.28;
+    --wordmark: rgba(11, 19, 48, 0.06);
+    --error: #b42318;
+
+    color-scheme: light;
+  }
 }
 
 *,
@@ -48,21 +115,14 @@
 }
 
 html {
-  /* Explicit background + color-scheme so any gutter/overscroll sliver not covered by
-     body (e.g. scrollbar reflow, elastic overscroll) never falls back to the browser's
-     dark-mode default canvas color — this page is always light, regardless of OS theme. */
-  background: var(--paper);
-  color-scheme: light;
+  background: var(--bg);
   scroll-behavior: smooth;
-  /* overflow-x lives on body only. Setting it on BOTH html and body makes both into
-     scroll containers, which breaks position:sticky on descendants (e.g. .site-header
-     silently stopped sticking and scrolled away like a normal element). */
 }
 
 body {
   min-width: 320px;
   margin: 0;
-  background: var(--paper);
+  background: var(--bg);
   overflow-x: hidden;
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -71,7 +131,7 @@ body {
 
 app-root {
   display: block;
-  background: var(--paper);
+  background: var(--bg);
 }
 
 img {
@@ -85,8 +145,29 @@ h3 {
 }
 
 ::selection {
-  background: var(--signal);
-  color: var(--white);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Smooth scheme cross-fade when the OS theme flips */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  app-root,
+  section,
+  header,
+  footer,
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  button,
+  input,
+  textarea {
+    transition-property: background-color, color, border-color;
+    transition-duration: 500ms;
+    transition-timing-function: var(--ease-out);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
