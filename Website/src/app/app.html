@@ -1,4 +1,4 @@
-<header class="site-header">
+<header class="site-header" [class.site-header--scrolled]="headerScrolled()">
   <a class="brand" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
     <span class="brand-mark" aria-hidden="true"></span>
     {{ contentStore.companyDetails().brandName }}
@@ -11,7 +11,7 @@
   </nav>
 
   <button class="nav-cta" type="button" (click)="scrollTo('contact')">
-    Let's Talk
+    <span>Let's Talk</span>
     <svg lucideArrowRight aria-hidden="true"></svg>
   </button>
 
@@ -32,8 +32,11 @@
 
 @if (menuOpen()) {
   <nav class="mobile-nav" aria-label="Mobile navigation">
-    @for (item of navItems; track item.target) {
-      <button type="button" (click)="scrollTo(item.target)">{{ item.label }}</button>
+    @for (item of navItems; track item.target; let i = $index) {
+      <button type="button" [style.--i]="i" (click)="scrollTo(item.target)">
+        <span class="mobile-nav-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
+        {{ item.label }}
+      </button>
     }
   </nav>
 }
@@ -41,94 +44,104 @@
 <main id="top">
   <app-hero-video />
 
-  <section id="services" class="section-shell services-section" data-fade-in aria-labelledby="services-title">
-    <div class="section-heading split">
-      @if (contentStore.loading()) {
-        <div aria-hidden="true">
-          <span class="skeleton-block skeleton-eyebrow"></span>
-          <span class="skeleton-block skeleton-heading"></span>
-        </div>
-        <p aria-hidden="true">
-          <span class="skeleton-block skeleton-desc-line"></span>
-          <span class="skeleton-block skeleton-desc-line"></span>
-        </p>
-      } @else {
-        <div>
-          <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.servicesSection().eyebrow }}</p>
-          <h2 id="services-title" class="reveal-item" style="--i: 1">{{ contentStore.servicesSection().heading }}</h2>
-        </div>
-        <p class="reveal-item" style="--i: 2">{{ contentStore.servicesSection().description }}</p>
-      }
-    </div>
-
-    <div class="service-list" aria-label="Gencolink service catalog" [attr.aria-busy]="contentStore.loading()">
-      @if (contentStore.loading()) {
-        @for (row of [0, 1, 2, 3, 4]; track row) {
-          <div class="service-row service-row--skeleton" aria-hidden="true">
-            <span class="skeleton-block skeleton-index"></span>
-            <span class="service-row-copy">
-              <span class="skeleton-block skeleton-title"></span>
-              <span class="skeleton-block skeleton-body"></span>
-              <span class="skeleton-block skeleton-body skeleton-body--short"></span>
-            </span>
-            <span class="skeleton-block skeleton-action"></span>
-          </div>
-        }
-      } @else {
-        @for (service of contentStore.services(); track service.title; let i = $index) {
-          <div class="service-row" [style.--i]="i">
-            <span class="service-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
-            <span class="service-row-copy">
-              <span class="service-title">{{ service.title }}</span>
-              <span class="service-body">{{ service.body }}</span>
-            </span>
-            <button type="button" class="text-link service-explore" (click)="scrollTo('contact')">
-              Explore
-              <svg lucideArrowRight aria-hidden="true"></svg>
-            </button>
-          </div>
-        }
-      }
-    </div>
-  </section>
-
-  <section id="why" class="why-section" data-fade-in aria-labelledby="why-title">
+  <!-- ============ SERVICES — the catalog ledger ============ -->
+  <section id="services" class="services-section" data-fade-in aria-labelledby="services-title">
     <div class="section-shell">
-      <div class="why-intro">
+      <div class="services-head">
         @if (contentStore.loading()) {
-          <div class="why-intro-head" aria-hidden="true">
-            <span class="skeleton-block skeleton-block--invert skeleton-eyebrow"></span>
-            <span class="skeleton-block skeleton-block--invert skeleton-heading"></span>
+          <div aria-hidden="true">
+            <span class="skeleton-block skeleton-eyebrow"></span>
+            <span class="skeleton-block skeleton-heading"></span>
+            <span class="skeleton-block skeleton-desc-line"></span>
           </div>
-          <p class="why-lead" aria-hidden="true">
-            <span class="skeleton-block skeleton-block--invert skeleton-desc-line"></span>
-            <span class="skeleton-block skeleton-block--invert skeleton-desc-line"></span>
-          </p>
         } @else {
-          <div class="why-intro-head">
-            <p class="eyebrow eyebrow--invert reveal-item" style="--i: 0">{{ contentStore.whySection().eyebrow }}</p>
-            <h2 id="why-title" class="reveal-item" style="--i: 1">{{ contentStore.whySection().heading }}</h2>
+          <div class="rule-label" data-reveal>
+            <span class="rule-label-text">{{ contentStore.servicesSection().eyebrow }}</span>
+            <span class="rule-label-line" data-rule aria-hidden="true"></span>
           </div>
-          <p class="why-lead reveal-item" style="--i: 2">{{ contentStore.whySection().description }}</p>
+          <div class="services-head-grid">
+            <h2 id="services-title" data-reveal>{{ contentStore.servicesSection().heading }}</h2>
+            <p class="services-head-desc" data-reveal>{{ contentStore.servicesSection().description }}</p>
+          </div>
         }
       </div>
 
-      <ul class="value-grid" [attr.aria-busy]="contentStore.loading()">
+      <div class="service-list" aria-label="Gencolink service catalog" [attr.aria-busy]="contentStore.loading()">
+        @if (contentStore.loading()) {
+          @for (row of [0, 1, 2, 3, 4]; track row) {
+            <div class="service-row service-row--skeleton" aria-hidden="true">
+              <span class="skeleton-block skeleton-index"></span>
+              <span class="service-row-copy">
+                <span class="skeleton-block skeleton-title"></span>
+                <span class="skeleton-block skeleton-body"></span>
+                <span class="skeleton-block skeleton-body skeleton-body--short"></span>
+              </span>
+            </div>
+          }
+        } @else {
+          @for (service of contentStore.services(); track service.title; let i = $index) {
+            <article class="service-row" data-reveal-row>
+              <span class="service-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
+              <div class="service-row-copy">
+                <h3 class="service-title">{{ service.title }}</h3>
+                <p class="service-body">{{ service.body }}</p>
+                @if (service.items.length) {
+                  <ul class="service-tags" aria-label="Included capabilities">
+                    @for (tag of service.items; track tag) {
+                      <li>{{ tag }}</li>
+                    }
+                  </ul>
+                }
+              </div>
+              <button
+                type="button"
+                class="service-explore"
+                (click)="scrollTo('contact')"
+                [attr.aria-label]="'Discuss ' + service.title"
+              >
+                <svg lucideArrowRight aria-hidden="true"></svg>
+              </button>
+            </article>
+          }
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHY — the navy drench ============ -->
+  <section id="why" class="why-section" data-fade-in aria-labelledby="why-title">
+    <div class="section-shell why-layout">
+      <div class="why-intro">
+        @if (contentStore.loading()) {
+          <div aria-hidden="true">
+            <span class="skeleton-block skeleton-block--invert skeleton-eyebrow"></span>
+            <span class="skeleton-block skeleton-block--invert skeleton-heading"></span>
+            <span class="skeleton-block skeleton-block--invert skeleton-desc-line"></span>
+          </div>
+        } @else {
+          <p class="why-tag" data-reveal>{{ contentStore.whySection().eyebrow }}</p>
+          <h2 id="why-title" data-reveal>{{ contentStore.whySection().heading }}</h2>
+          <p class="why-lead" data-reveal>{{ contentStore.whySection().description }}</p>
+        }
+      </div>
+
+      <ul class="value-list" [attr.aria-busy]="contentStore.loading()">
         @if (contentStore.loading()) {
           @for (row of [0, 1, 2]; track row) {
             <li class="value-item value-item--skeleton" aria-hidden="true">
-              <span class="skeleton-block skeleton-block--invert skeleton-value-node"></span>
               <span class="skeleton-block skeleton-block--invert skeleton-value-title"></span>
               <span class="skeleton-block skeleton-block--invert skeleton-value-body"></span>
               <span class="skeleton-block skeleton-block--invert skeleton-value-body"></span>
             </li>
           }
         } @else {
-          @for (value of contentStore.values(); track value.title; let i = $index) {
-            <li class="value-item" [style.--i]="i">
+          @for (value of contentStore.values(); track value.title) {
+            <li class="value-item" data-reveal-row>
               <span class="value-node" aria-hidden="true"></span>
-              <h3>{{ value.title }}</h3>
-              <p>{{ value.body }}</p>
+              <div>
+                <h3>{{ value.title }}</h3>
+                <p>{{ value.body }}</p>
+              </div>
             </li>
           }
         }
@@ -136,54 +149,56 @@
     </div>
   </section>
 
-  <section id="faq" class="section-shell faq-section" data-fade-in aria-labelledby="faq-title">
-    <div class="section-heading split">
-      @if (contentStore.loading()) {
-        <div aria-hidden="true">
-          <span class="skeleton-block skeleton-eyebrow"></span>
-          <span class="skeleton-block skeleton-heading"></span>
-        </div>
-      } @else {
-        <div>
-          <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.faqSection().eyebrow }}</p>
-          <h2 id="faq-title" class="reveal-item" style="--i: 1">{{ contentStore.faqSection().heading }}</h2>
-        </div>
-      }
-      <p class="faq-aside reveal-item" style="--i: 2">
-        Can't find your answer?
-        <button type="button" class="text-link" (click)="scrollTo('contact')">
-          Talk to us
-          <svg lucideArrowRight aria-hidden="true"></svg>
-        </button>
-      </p>
-    </div>
-
-    <div class="faq-list" [attr.aria-busy]="contentStore.loading()">
-      @if (contentStore.loading()) {
-        @for (row of [0, 1, 2, 3, 4]; track row) {
-          <div class="faq-item faq-item--skeleton" aria-hidden="true">
-            <div class="faq-skeleton-summary">
-              <span class="skeleton-block skeleton-faq-question"></span>
-              <span class="skeleton-block skeleton-faq-marker"></span>
-            </div>
+  <!-- ============ FAQ ============ -->
+  <section id="faq" class="faq-section" data-fade-in aria-labelledby="faq-title">
+    <div class="section-shell faq-layout">
+      <div class="faq-head">
+        @if (contentStore.loading()) {
+          <div aria-hidden="true">
+            <span class="skeleton-block skeleton-eyebrow"></span>
+            <span class="skeleton-block skeleton-heading"></span>
           </div>
+        } @else {
+          <h2 id="faq-title" data-reveal>{{ contentStore.faqSection().heading }}</h2>
+          <p class="faq-tag" data-reveal>{{ contentStore.faqSection().eyebrow }}</p>
         }
-      } @else {
-        @for (item of contentStore.faqs(); track item.question; let i = $index) {
-          <details class="faq-item reveal-item" [style.--i]="i" name="faq">
-            <summary>
-              <span class="faq-question">{{ item.question }}</span>
-              <span class="faq-marker" aria-hidden="true"></span>
-            </summary>
-            <div class="faq-answer">
-              <p>{{ item.answer }}</p>
+        <p class="faq-aside" data-reveal>
+          Can't find your answer?
+          <button type="button" class="text-link" (click)="scrollTo('contact')">
+            Talk to us
+            <svg lucideArrowRight aria-hidden="true"></svg>
+          </button>
+        </p>
+      </div>
+
+      <div class="faq-list" [attr.aria-busy]="contentStore.loading()">
+        @if (contentStore.loading()) {
+          @for (row of [0, 1, 2, 3, 4]; track row) {
+            <div class="faq-item faq-item--skeleton" aria-hidden="true">
+              <div class="faq-skeleton-summary">
+                <span class="skeleton-block skeleton-faq-question"></span>
+                <span class="skeleton-block skeleton-faq-marker"></span>
+              </div>
             </div>
-          </details>
+          }
+        } @else {
+          @for (item of contentStore.faqs(); track item.question) {
+            <details class="faq-item" data-reveal-row name="faq">
+              <summary>
+                <span class="faq-question">{{ item.question }}</span>
+                <span class="faq-marker" aria-hidden="true"></span>
+              </summary>
+              <div class="faq-answer">
+                <p>{{ item.answer }}</p>
+              </div>
+            </details>
+          }
         }
-      }
+      </div>
     </div>
   </section>
 
+  <!-- ============ CONTACT ============ -->
   <section id="contact" class="contact-section" data-fade-in aria-labelledby="contact-title">
     <div class="section-shell contact-layout">
       <div class="contact-copy">
@@ -191,45 +206,51 @@
           <div aria-hidden="true">
             <span class="skeleton-block skeleton-eyebrow"></span>
             <span class="skeleton-block skeleton-heading"></span>
+            <span class="skeleton-block skeleton-desc-line"></span>
+            <span class="skeleton-block skeleton-desc-line"></span>
           </div>
-          <p aria-hidden="true">
-            <span class="skeleton-block skeleton-desc-line"></span>
-            <span class="skeleton-block skeleton-desc-line"></span>
-          </p>
         } @else {
-          <p class="eyebrow reveal-item" style="--i: 0">{{ contentStore.contactSection().eyebrow }}</p>
-          <h2 id="contact-title" class="reveal-item" style="--i: 1">{{ contentStore.contactSection().heading }}</h2>
-          <p class="reveal-item" style="--i: 2">{{ contentStore.contactSection().description }}</p>
+          <div class="rule-label" data-reveal>
+            <span class="rule-label-text">{{ contentStore.contactSection().eyebrow }}</span>
+            <span class="rule-label-line" data-rule aria-hidden="true"></span>
+          </div>
+          <h2 id="contact-title" data-reveal>{{ contentStore.contactSection().heading }}</h2>
+          <p class="contact-desc" data-reveal>{{ contentStore.contactSection().description }}</p>
+          <div class="contact-direct" data-reveal>
+            <a [href]="'mailto:' + contentStore.companyDetails().email" class="contact-direct-link">
+              <svg lucideMail aria-hidden="true"></svg>
+              {{ contentStore.companyDetails().email }}
+            </a>
+            <a [href]="telHref(contentStore.companyDetails().phonePrimary)" class="contact-direct-link">
+              {{ contentStore.companyDetails().phonePrimary }}
+            </a>
+          </div>
         }
       </div>
 
-      <form
-        [formGroup]="contactForm"
-        (ngSubmit)="submitContact()"
-        novalidate
-        class="reveal-item"
-        style="--i: 3"
-      >
-        <label>
-          <span>Full name</span>
-          <input type="text" formControlName="name" autocomplete="name" placeholder="Your name" />
-        </label>
-        <label>
-          <span>Work email</span>
-          <input type="email" formControlName="email" autocomplete="email" placeholder="you@company.com" />
-        </label>
+      <form [formGroup]="contactForm" (ngSubmit)="submitContact()" novalidate data-reveal>
+        <div class="field-grid">
+          <label>
+            <span>Full name</span>
+            <input type="text" formControlName="name" autocomplete="name" placeholder="Your name" />
+          </label>
+          <label>
+            <span>Work email</span>
+            <input type="email" formControlName="email" autocomplete="email" placeholder="you@company.com" />
+          </label>
+        </div>
         <label>
           <span>Company <em>(optional)</em></span>
           <input type="text" formControlName="company" autocomplete="organization" placeholder="Your company" />
         </label>
         <label class="message-field">
           <span>How can we help?</span>
-          <textarea formControlName="message" rows="4" placeholder="Share a few details about your project"></textarea>
+          <textarea formControlName="message" rows="5" placeholder="Share a few details about your project"></textarea>
         </label>
         @if (submitted() && contactForm.invalid) {
           <p class="form-alert" role="alert">Please add your name, a valid email, and a short message.</p>
         }
-        <button class="primary-button submit-button" type="submit" [disabled]="submitting()">
+        <button class="submit-button" type="submit" [disabled]="submitting()">
           @if (submitting()) {
             Sending…
           } @else {
@@ -243,95 +264,100 @@
 </main>
 
 <footer class="site-footer">
-  <div class="footer-brand reveal-item" style="--i: 0" [attr.aria-busy]="contentStore.loading()">
-    @if (contentStore.loading()) {
-      <span class="skeleton-block skeleton-block--invert skeleton-footer-brand" aria-hidden="true"></span>
-      <span class="skeleton-block skeleton-block--invert skeleton-footer-tagline" aria-hidden="true"></span>
-      <span class="skeleton-block skeleton-block--invert skeleton-footer-tagline" aria-hidden="true"></span>
-    } @else {
-      <a class="brand" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
-        <span class="brand-mark" aria-hidden="true"></span>
-        {{ contentStore.companyDetails().brandName }}
-      </a>
-      <p>{{ contentStore.companyDetails().tagline }}</p>
-    }
+  <div class="footer-grid">
+    <div class="footer-brand" [attr.aria-busy]="contentStore.loading()">
+      @if (contentStore.loading()) {
+        <span class="skeleton-block skeleton-block--invert skeleton-footer-brand" aria-hidden="true"></span>
+        <span class="skeleton-block skeleton-block--invert skeleton-footer-tagline" aria-hidden="true"></span>
+      } @else {
+        <a class="brand brand--footer" href="#top" [attr.aria-label]="contentStore.companyDetails().brandName + ' home'">
+          <span class="brand-mark" aria-hidden="true"></span>
+          {{ contentStore.companyDetails().brandName }}
+        </a>
+        <p>{{ contentStore.companyDetails().tagline }}</p>
+      }
+    </div>
+
+    <nav class="footer-col" aria-label="Footer navigation">
+      <h2>Company</h2>
+      <button type="button" (click)="scrollTo('why')">About</button>
+      <button type="button" (click)="scrollTo('services')">Services</button>
+      <button type="button" (click)="scrollTo('faq')">FAQ</button>
+      <button type="button" (click)="scrollTo('contact')">Contact</button>
+    </nav>
+
+    <div class="footer-col" [attr.aria-busy]="contentStore.loading()">
+      <h2>Contact</h2>
+      @if (contentStore.loading()) {
+        <span class="skeleton-block skeleton-block--invert skeleton-footer-line" aria-hidden="true"></span>
+        <span class="skeleton-block skeleton-block--invert skeleton-footer-line skeleton-footer-line--short" aria-hidden="true"></span>
+        <span class="skeleton-block skeleton-block--invert skeleton-footer-line" aria-hidden="true"></span>
+      } @else {
+        <a [href]="'mailto:' + contentStore.companyDetails().email">{{ contentStore.companyDetails().email }}</a>
+        <a [href]="telHref(contentStore.companyDetails().phonePrimary)">{{
+          contentStore.companyDetails().phonePrimary
+        }}</a>
+        <a [href]="telHref(contentStore.companyDetails().phoneSecondary)">{{
+          contentStore.companyDetails().phoneSecondary
+        }}</a>
+        <div class="social-links" aria-label="Social links">
+          @if (contentStore.companyDetails().linkedinUrl) {
+            <a [href]="contentStore.companyDetails().linkedinUrl" aria-label="LinkedIn">
+              <svg lucideLink aria-hidden="true"></svg>
+            </a>
+          }
+          @if (contentStore.companyDetails().githubUrl) {
+            <a [href]="contentStore.companyDetails().githubUrl" aria-label="GitHub">
+              <svg lucideCode2 aria-hidden="true"></svg>
+            </a>
+          }
+          @if (contentStore.companyDetails().facebookUrl) {
+            <a [href]="contentStore.companyDetails().facebookUrl" aria-label="Facebook">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M22 12a10 10 0 1 0-11.5 9.9v-7H8v-2.9h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6v1.9h2.8L15 14.9h-2.4v7A10 10 0 0 0 22 12Z"
+                />
+              </svg>
+            </a>
+          }
+          @if (contentStore.companyDetails().instagramUrl) {
+            <a [href]="contentStore.companyDetails().instagramUrl" aria-label="Instagram">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+              </svg>
+            </a>
+          }
+          @if (contentStore.companyDetails().tiktokUrl) {
+            <a [href]="contentStore.companyDetails().tiktokUrl" aria-label="TikTok">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"
+                />
+              </svg>
+            </a>
+          }
+        </div>
+      }
+    </div>
   </div>
-  <div class="reveal-item" style="--i: 1">
-    <h2>Company</h2>
-    <button type="button" (click)="scrollTo('why')">About</button>
-    <button type="button" (click)="scrollTo('services')">Services</button>
-    <button type="button" (click)="scrollTo('faq')">FAQ</button>
-    <button type="button" (click)="scrollTo('contact')">Contact</button>
+
+  <div class="footer-wordmark" aria-hidden="true">
+    {{ contentStore.companyDetails().brandName }}
   </div>
-  <div class="reveal-item" style="--i: 2" [attr.aria-busy]="contentStore.loading()">
-    <h2>Contact</h2>
-    @if (contentStore.loading()) {
-      <span class="skeleton-block skeleton-block--invert skeleton-footer-line" aria-hidden="true"></span>
-      <span class="skeleton-block skeleton-block--invert skeleton-footer-line skeleton-footer-line--short" aria-hidden="true"></span>
-      <span class="skeleton-block skeleton-block--invert skeleton-footer-line" aria-hidden="true"></span>
-      <div class="skeleton-social-links" aria-hidden="true">
-        <span class="skeleton-block skeleton-block--invert skeleton-social-icon"></span>
-        <span class="skeleton-block skeleton-block--invert skeleton-social-icon"></span>
-        <span class="skeleton-block skeleton-block--invert skeleton-social-icon"></span>
-      </div>
-    } @else {
-      <a [href]="'mailto:' + contentStore.companyDetails().email">
-        <svg lucideMail aria-hidden="true"></svg>{{ contentStore.companyDetails().email }}
-      </a>
-      <a [href]="telHref(contentStore.companyDetails().phonePrimary)">{{
-        contentStore.companyDetails().phonePrimary
-      }}</a>
-      <a [href]="telHref(contentStore.companyDetails().phoneSecondary)">{{
-        contentStore.companyDetails().phoneSecondary
-      }}</a>
-      <div class="social-links" aria-label="Social links">
-        @if (contentStore.companyDetails().linkedinUrl) {
-          <a [href]="contentStore.companyDetails().linkedinUrl" aria-label="LinkedIn">
-            <svg lucideLink aria-hidden="true"></svg>
-          </a>
-        }
-        @if (contentStore.companyDetails().githubUrl) {
-          <a [href]="contentStore.companyDetails().githubUrl" aria-label="GitHub">
-            <svg lucideCode2 aria-hidden="true"></svg>
-          </a>
-        }
-        @if (contentStore.companyDetails().facebookUrl) {
-          <a [href]="contentStore.companyDetails().facebookUrl" aria-label="Facebook">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path
-                d="M22 12a10 10 0 1 0-11.5 9.9v-7H8v-2.9h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6v1.9h2.8L15 14.9h-2.4v7A10 10 0 0 0 22 12Z"
-              />
-            </svg>
-          </a>
-        }
-        @if (contentStore.companyDetails().instagramUrl) {
-          <a [href]="contentStore.companyDetails().instagramUrl" aria-label="Instagram">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-            </svg>
-          </a>
-        }
-        @if (contentStore.companyDetails().tiktokUrl) {
-          <a [href]="contentStore.companyDetails().tiktokUrl" aria-label="TikTok">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path
-                d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"
-              />
-            </svg>
-          </a>
-        }
-      </div>
-    }
+
+  <div class="footer-legal">
+    <span>© {{ currentYear }} {{ contentStore.companyDetails().brandName }}. All rights reserved.</span>
+    <span class="footer-legal-mark">Engineered with care.</span>
   </div>
 </footer>
 

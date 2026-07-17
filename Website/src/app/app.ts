@@ -6,8 +6,11 @@ import {
   signal,
   AfterViewInit,
   OnDestroy,
+  NgZone,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ContactService } from './contact.service';
 import {
   LucideArrowRight,
@@ -20,6 +23,8 @@ import {
 } from '@lucide/angular';
 import { HeroVideoComponent } from './hero-video/hero-video.component';
 import { SiteContentService } from './site-content.service';
+
+gsap.registerPlugin(ScrollTrigger);
 
 @Component({
   selector: 'app-root',
@@ -37,10 +42,10 @@ import { SiteContentService } from './site-content.service';
   templateUrl: './app.html',
   styleUrl: './app.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(window:load)': 'setupScrollAnimation()' },
 })
 export class App implements AfterViewInit, OnDestroy {
   private readonly formBuilder = new FormBuilder();
+  private readonly ngZone = inject(NgZone);
   readonly contentStore = inject(SiteContentService);
 
   private readonly contactService = inject(ContactService);
@@ -48,7 +53,9 @@ export class App implements AfterViewInit, OnDestroy {
   readonly menuOpen = signal(false);
   readonly submitted = signal(false);
   readonly submitting = signal(false);
+  readonly headerScrolled = signal(false);
   readonly toast = signal<{ type: 'success' | 'error'; message: string } | null>(null);
+  readonly currentYear = new Date().getFullYear();
 
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -66,24 +73,24 @@ export class App implements AfterViewInit, OnDestroy {
     { label: 'Contact', target: 'contact' },
   ] as const;
 
-  private sectionObserver: IntersectionObserver | null = null;
-  private itemObserver: IntersectionObserver | null = null;
+  /**
+   * All scroll-reveal tweens/triggers live in this context so a content change
+   * can cleanly revert() everything and rebuild against the fresh DOM.
+   * Content is ALWAYS visible by default in CSS — GSAP only hides-then-reveals
+   * at runtime, so no JS (or reduced motion) means fully visible content, never
+   * a blank page.
+   */
+  private motionContext?: gsap.Context;
+  private headerTrigger?: ScrollTrigger;
 
   constructor() {
     void this.contentStore.load();
 
-    // Re-run scroll-reveal observation whenever the rendered DOM changes.
-    // Rows are opacity:0 until IntersectionObserver adds .animate-in-view, so
-    // anything rendered after the last observation pass stays invisible -
-    // present in the DOM/inspector but never actually shown on screen.
-    //
-    // Tracking loading() as well as content() is what makes the CMS-failure
-    // path work: when the Directus fetch fails, SiteContentService keeps the
-    // existing default content, so content() never changes and this effect
-    // would never re-run. Only loading() flips (true -> false), and that flip
-    // is what swaps the skeletons for the real rows - which then need
-    // observing. Tracking content() alone meant a failed fetch left every
-    // section blank except the hero (the hero isn't behind the loading gate).
+    // Rebuild reveal choreography whenever the rendered DOM changes: both when
+    // CMS content arrives AND when loading() settles without a content change
+    // (the fetch-failed path — content() keeps defaults, only loading() flips,
+    // but the skeleton -> real-rows DOM swap still happens and the new nodes
+    // need observing).
     effect(() => {
       this.contentStore.content();
       this.contentStore.loading();
@@ -93,52 +100,82 @@ export class App implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.setupScrollAnimation();
+
+    // Header state is independent of content — set up once.
+    this.ngZone.runOutsideAngular(() => {
+      this.headerTrigger = ScrollTrigger.create({
+        start: 24,
+        onUpdate: (self) => {
+          const scrolled = self.scroll() > 24;
+          if (scrolled !== this.headerScrolled()) {
+            this.ngZone.run(() => this.headerScrolled.set(scrolled));
+          }
+        },
+      });
+    });
   }
 
   setupScrollAnimation(): void {
-    // This runs again on every content/loading change, so drop the previous
-    // observers first - otherwise each pass leaves a live observer still
-    // watching now-detached nodes.
-    this.sectionObserver?.disconnect();
-    this.itemObserver?.disconnect();
+    this.ngZone.runOutsideAngular(() => {
+      this.motionContext?.revert();
 
-    // Observe sections for fade-in
-    const sectionObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('fade-in-visible');
-          }
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reducedMotion) {
+        ScrollTrigger.refresh();
+        return;
+      }
+
+      this.motionContext = gsap.context(() => {
+        // Headings, intro copy, forms — single rise + fade per element.
+        gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach((el) => {
+          gsap.from(el, {
+            autoAlpha: 0,
+            y: 28,
+            duration: 0.9,
+            ease: 'power3.out',
+            scrollTrigger: { trigger: el, start: 'top 88%' },
+          });
         });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    );
-    this.sectionObserver = sectionObserver;
 
-    const sectionsToObserve = document.querySelectorAll('[data-fade-in]');
-    sectionsToObserve.forEach((el) => sectionObserver.observe(el));
-
-    // Observe individual items for per-item animations
-    const itemObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-in-view');
-            itemObserver.unobserve(entry.target);
-          }
+        // Ledger rows (services / values / faqs) — staggered per container.
+        const rows = gsap.utils.toArray<HTMLElement>('[data-reveal-row]');
+        const byParent = new Map<Element, HTMLElement[]>();
+        rows.forEach((row) => {
+          const parent = row.parentElement ?? document.body;
+          const group = byParent.get(parent) ?? [];
+          group.push(row);
+          byParent.set(parent, group);
         });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    );
-    this.itemObserver = itemObserver;
+        byParent.forEach((group) => {
+          gsap.from(group, {
+            autoAlpha: 0,
+            y: 36,
+            duration: 0.85,
+            ease: 'power3.out',
+            stagger: 0.09,
+            scrollTrigger: { trigger: group[0], start: 'top 90%' },
+          });
+        });
 
-    const itemsToObserve = document.querySelectorAll('.service-row, .value-item, .reveal-item');
-    itemsToObserve.forEach((el) => itemObserver.observe(el));
+        // Hairline rules draw in from the left.
+        gsap.utils.toArray<HTMLElement>('[data-rule]').forEach((el) => {
+          gsap.from(el, {
+            scaleX: 0,
+            transformOrigin: 'left center',
+            duration: 1.1,
+            ease: 'power4.out',
+            scrollTrigger: { trigger: el, start: 'top 92%' },
+          });
+        });
+      });
+
+      ScrollTrigger.refresh();
+    });
   }
 
   ngOnDestroy(): void {
-    this.sectionObserver?.disconnect();
-    this.itemObserver?.disconnect();
+    this.motionContext?.revert();
+    this.headerTrigger?.kill();
     if (this.toastTimer) clearTimeout(this.toastTimer);
   }
 

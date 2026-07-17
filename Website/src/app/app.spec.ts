@@ -25,9 +25,9 @@ describe('App', () => {
     expect(compiled.querySelector('h1')?.textContent).toContain('Building software that powers a');
   });
 
-  // Regression test. Rows are opacity:0 until IntersectionObserver adds
-  // .animate-in-view, so any DOM rendered after the last observation pass stays
-  // permanently invisible. When the Directus fetch FAILS, SiteContentService
+  // Regression test. Rows are hidden by GSAP's from-state until their
+  // ScrollTrigger observes them, so any DOM rendered after the last setup pass
+  // would stay invisible. When the Directus fetch FAILS, SiteContentService
   // keeps the default content, so content() never changes - only loading()
   // flips, and that flip is what swaps skeletons for the real rows. If the
   // reveal effect tracks content() alone it never re-runs here, and every

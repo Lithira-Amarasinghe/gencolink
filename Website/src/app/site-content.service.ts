@@ -355,6 +355,24 @@ const defaultContent: SiteContent = {
   },
 };
 
+/**
+ * Directus json columns come back as an actual array on some databases and as
+ * a serialized JSON string on others (MSSQL). Accept both; anything else
+ * becomes an empty list rather than a runtime error.
+ */
+function parseStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string');
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.filter((v): v is string => typeof v === 'string');
+    } catch {
+      /* not JSON — fall through */
+    }
+  }
+  return [];
+}
+
 @Injectable({ providedIn: 'root' })
 export class SiteContentService {
   readonly content = signal<SiteContent>(defaultContent);
@@ -429,7 +447,7 @@ export class SiteContentService {
             icon: r['icon'] as ServiceContent['icon'],
             title: r['title'] as string,
             body: r['body'] as string,
-            items: Array.isArray(r['items']) ? (r['items'] as string[]) : [],
+            items: parseStringArray(r['items']),
           }))
         : defaultContent.services;
 

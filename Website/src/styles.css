@@ -1,7 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
-  /* Brand */
+  /* Brand — precision-instrument navy system */
   --ink: #0b1330;
   --navy: #162162;
   --blue: #19428b;
@@ -9,25 +9,36 @@
   --signal-bright: #4ea8e8;
   --paper: #fafafa;
   --white: #ffffff;
-  --slate: #55647c;
+  --slate: #46536b;
   --slate-soft: #7a89a3;
 
+  /* Inverted (on navy/ink surfaces) */
+  --ice: #eef3fb;
+  --ice-soft: rgba(238, 243, 251, 0.68);
+
   /* Structural */
-  --line: rgba(22, 33, 98, 0.12);
+  --line: rgba(22, 33, 98, 0.14);
   --line-soft: rgba(22, 33, 98, 0.08);
+  --line-ice: rgba(238, 243, 251, 0.18);
+  --line-ice-soft: rgba(238, 243, 251, 0.1);
   --signal-soft: rgba(15, 128, 203, 0.14);
-  --navy-soft: rgba(22, 33, 98, 0.06);
+  --navy-soft: rgba(22, 33, 98, 0.05);
 
   /* Type */
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Motion: smooth & elegant curves */
+  /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-quart: cubic-bezier(0.5, 0, 0.75, 0);
+
+  /* Z scale */
+  --z-header: 40;
+  --z-mobile-nav: 50;
+  --z-toast: 60;
 }
 
 *,
@@ -54,6 +65,8 @@ body {
   background: var(--paper);
   overflow-x: hidden;
   font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 app-root {
@@ -63,6 +76,12 @@ app-root {
 
 img {
   max-width: 100%;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
 }
 
 ::selection {
