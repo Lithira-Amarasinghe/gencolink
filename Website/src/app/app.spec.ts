@@ -69,7 +69,8 @@ describe('App', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const rows = compiled.querySelectorAll('.service-row:not(.service-row--skeleton)');
-    expect(rows.length).toBeGreaterThan(0);
+    // Real service panels (excluding the trailing CTA panel).
+    const panels = compiled.querySelectorAll('.panel:not(.panel--cta):not(.panel--skeleton)');
+    expect(panels.length).toBeGreaterThan(0);
   });
 });

@@ -59,6 +59,11 @@ export class App implements AfterViewInit, OnDestroy {
   /** Hero headline split into words so each can be masked and choreographed. */
   readonly heroTitleWords = computed(() => this.contentStore.hero().title.split(' '));
 
+  /** Count shown as the services "N capabilities" measurement label. */
+  readonly serviceCount = computed(() =>
+    this.contentStore.services().length.toString().padStart(2, '0'),
+  );
+
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly contactForm = this.formBuilder.nonNullable.group({
@@ -87,6 +92,25 @@ export class App implements AfterViewInit, OnDestroy {
   private headerTrigger?: ScrollTrigger;
   private introPlayed = false;
   private magnetic: { el: HTMLElement; onMove: (e: PointerEvent) => void; onLeave: () => void }[] = [];
+  private resizeTimer?: ReturnType<typeof setTimeout>;
+  private lastCanHorizontal?: boolean;
+  private onResize = (): void => {
+    // Rebuild only when crossing the horizontal breakpoint — the pinned
+    // horizontal gallery is a different DOM shape (pin-spacer, class toggle)
+    // than the vertical stack, so ScrollTrigger's own refresh can't switch it.
+    clearTimeout(this.resizeTimer);
+    this.resizeTimer = setTimeout(() => {
+      const canHorizontal =
+        !!document.querySelector('.hscroll') &&
+        !!document.querySelector('[data-hscroll-track]') &&
+        window.matchMedia('(min-width: 900px)').matches;
+      if (canHorizontal !== this.lastCanHorizontal) {
+        this.setupScrollAnimation();
+      } else {
+        ScrollTrigger.refresh();
+      }
+    }, 220);
+  };
 
   constructor() {
     void this.contentStore.load();
@@ -107,6 +131,7 @@ export class App implements AfterViewInit, OnDestroy {
     this.playHeroIntro();
     this.setupScrollAnimation();
     this.setupMagnetic();
+    window.addEventListener('resize', this.onResize);
 
     // Header state is independent of content — set up once.
     this.ngZone.runOutsideAngular(() => {
@@ -158,7 +183,40 @@ export class App implements AfterViewInit, OnDestroy {
         return;
       }
 
+      // Services: pinned horizontal-scroll gallery on wide viewports. Vertical
+      // scroll drives the track sideways. Below 900px (or reduced motion, or
+      // coarse pointer) it stays a readable vertical stack — the CSS default,
+      // so content is always visible even with no JS.
+      const hscroll = document.querySelector<HTMLElement>('.hscroll');
+      const track = document.querySelector<HTMLElement>('[data-hscroll-track]');
+      hscroll?.classList.remove('hscroll--horizontal');
+      const canHorizontal =
+        !!hscroll && !!track && window.matchMedia('(min-width: 900px)').matches;
+      this.lastCanHorizontal = canHorizontal;
+
       this.motionContext = gsap.context(() => {
+        if (canHorizontal && hscroll && track) {
+          hscroll.classList.add('hscroll--horizontal');
+          const fill = document.querySelector<HTMLElement>('[data-hscroll-fill]');
+          const distance = () => Math.max(0, track.scrollWidth - hscroll.clientWidth);
+
+          gsap.to(track, {
+            x: () => -distance(),
+            ease: 'none',
+            scrollTrigger: {
+              trigger: hscroll,
+              start: 'top top',
+              end: () => '+=' + distance(),
+              pin: true,
+              scrub: 1,
+              invalidateOnRefresh: true,
+              onUpdate: (self) => {
+                if (fill) fill.style.transform = `scaleX(${self.progress})`;
+              },
+            },
+          });
+        }
+
         // Aurora orbs drift on scroll (scrubbed parallax).
         gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((el) => {
           const strength = Number(el.dataset['parallax'] ?? 10);
@@ -262,6 +320,8 @@ export class App implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    window.removeEventListener('resize', this.onResize);
+    clearTimeout(this.resizeTimer);
     this.motionContext?.revert();
     this.introContext?.revert();
     this.headerTrigger?.kill();

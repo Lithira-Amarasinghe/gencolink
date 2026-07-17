@@ -601,17 +601,20 @@
 }
 
 /* ============================================================
-   SERVICES — catalog ledger (dark)
+   SERVICES — pinned horizontal gallery (dark)
+   Vertical scroll drives the panel track sideways (JS adds
+   .hscroll--horizontal). Default layout is a vertical stack so
+   content is readable with no JS / reduced motion / mobile.
    ============================================================ */
 
 .services-section {
   position: relative;
-  padding: clamp(90px, 12vw, 160px) 0 clamp(70px, 9vw, 120px);
+  padding: clamp(90px, 12vw, 160px) 0 0;
   background: var(--bg);
 }
 
 .services-head {
-  margin-bottom: clamp(48px, 6vw, 84px);
+  margin-bottom: clamp(40px, 5vw, 72px);
 }
 
 .services-head-grid {
@@ -622,8 +625,14 @@
   margin-top: 26px;
 }
 
+.services-head-side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .services-head-desc {
-  margin: 0 0 8px;
+  margin: 0;
   max-width: 44ch;
   font-size: 16.5px;
   line-height: 1.65;
@@ -631,147 +640,267 @@
   text-wrap: pretty;
 }
 
-.service-list {
+.services-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.services-hint-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line-1);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+/* --- The pinned viewport --- */
+
+.hscroll {
+  position: relative;
+}
+
+.hscroll-track {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--line-1);
+  gap: 18px;
+  padding: 0 0 clamp(70px, 9vw, 120px);
+  will-change: transform;
 }
 
-.service-row {
+/* Horizontal mode (JS-enhanced, ≥900px) */
+.hscroll--horizontal {
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.hscroll--horizontal .hscroll-track {
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(20px, 2.4vw, 40px);
+  width: max-content;
+  height: 100%;
+  padding: 0 clamp(40px, 9vw, 128px);
+}
+
+/* --- Panels --- */
+
+.panel {
   position: relative;
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 64px;
-  gap: clamp(16px, 3vw, 40px);
-  align-items: start;
-  padding: clamp(26px, 3.4vw, 40px) clamp(8px, 1.5vw, 20px);
-  border-bottom: 1px solid var(--line-1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: clamp(28px, 3vw, 44px);
+  border: 1px solid var(--line-1);
+  background: linear-gradient(155deg, var(--chip-bg), transparent 70%);
+  overflow: hidden;
 }
 
-.service-row::before {
+.hscroll--horizontal .panel {
+  flex: 0 0 min(460px, 78vw);
+  height: min(60vh, 540px);
+  transition: border-color 300ms var(--ease-out);
+}
+
+.hscroll--horizontal .panel:hover {
+  border-color: var(--line-1);
+}
+
+.panel::after {
   content: "";
   position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(15, 128, 203, 0.1), rgba(15, 128, 203, 0.02));
-  transform: scaleY(0);
-  transform-origin: bottom center;
-  transition: transform 420ms var(--ease-out-quint);
+  inset: auto -30% -40% auto;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, var(--glow), transparent 70%);
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
   pointer-events: none;
 }
 
-.service-row:hover::before {
-  transform: scaleY(1);
-  transform-origin: top center;
+.hscroll--horizontal .panel:hover::after {
+  opacity: 0.6;
 }
 
-.service-index {
-  position: relative;
+.panel-index {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: clamp(2.4rem, 4vw, 3.4rem);
   font-weight: 500;
-  color: var(--text-dim);
-  padding-top: 8px;
-  transition: color 250ms var(--ease-out);
-}
-
-.service-row:hover .service-index {
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--accent);
+  opacity: 0.9;
 }
 
-.service-row-copy {
-  position: relative;
+.panel-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-width: 0;
+  gap: 12px;
 }
 
-.service-title {
+.panel-title {
   margin: 0;
   font-family: var(--font-display);
-  font-weight: 680;
-  font-stretch: 112%;
-  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
-  line-height: 1.12;
-  letter-spacing: -0.015em;
+  font-weight: 700;
+  font-stretch: 114%;
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
   color: var(--text-hi);
-  transition: transform 350ms var(--ease-out-quint);
 }
 
-.service-row:hover .service-title {
-  transform: translateX(6px);
-}
-
-.service-body {
+.panel-desc {
   margin: 0;
-  max-width: 62ch;
+  max-width: 42ch;
   font-size: 15.5px;
   line-height: 1.6;
   color: var(--text-body);
+  text-wrap: pretty;
 }
 
-.service-tags {
+.panel-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.service-tags li {
+.panel-tags li {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   letter-spacing: 0.02em;
   color: var(--accent-2);
   padding: 5px 10px;
   border: 1px solid var(--line-2);
-  background: var(--chip-bg);
-  transition: border-color 200ms var(--ease-out);
 }
 
-.service-row:hover .service-tags li {
+.panel-explore {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  border: 0;
+  background: none;
+  padding: 6px 0 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.panel-explore svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 250ms var(--ease-out);
+}
+
+.panel-explore:hover svg,
+.panel-explore:focus-visible svg {
+  transform: translateX(5px);
+  color: var(--accent);
+}
+
+/* End CTA panel */
+.panel--cta {
+  align-items: flex-start;
+  justify-content: center;
+  gap: 22px;
+  background: linear-gradient(155deg, rgba(46, 197, 255, 0.14), transparent 72%);
   border-color: var(--line-1);
 }
 
-.service-explore {
-  position: relative;
-  appearance: none;
-  justify-self: end;
-  align-self: center;
+.panel-cta-lead {
+  margin: 0;
+  max-width: 16ch;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 114%;
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text-hi);
+}
+
+.panel-cta-button {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border: 1px solid var(--line-1);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text);
-  cursor: pointer;
-  transition:
-    background-color 300ms var(--ease-out),
-    border-color 300ms var(--ease-out),
-    color 300ms var(--ease-out);
-}
-
-.service-explore svg {
-  width: 18px;
-  height: 18px;
-  transform: rotate(-45deg);
-  transition: transform 300ms var(--ease-out-quint);
-}
-
-.service-row:hover .service-explore {
+  gap: 12px;
+  border: 1px solid var(--accent);
   background: var(--accent);
-  border-color: var(--accent);
   color: var(--on-accent);
+  padding: 15px 28px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: box-shadow 250ms var(--ease-out);
 }
 
-.service-row:hover .service-explore svg,
-.service-explore:hover svg,
-.service-explore:focus-visible svg {
-  transform: rotate(0deg);
+.panel-cta-button svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 250ms var(--ease-out);
 }
+
+.panel-cta-button:hover,
+.panel-cta-button:focus-visible {
+  box-shadow: 0 8px 42px var(--glow);
+}
+
+.panel-cta-button:hover svg {
+  transform: translateX(4px);
+}
+
+/* Horizontal-scroll progress rail (only in horizontal mode) */
+.hscroll-progress {
+  display: none;
+}
+
+.hscroll--horizontal .hscroll-progress {
+  display: block;
+  position: absolute;
+  left: clamp(40px, 9vw, 128px);
+  right: clamp(40px, 9vw, 128px);
+  bottom: clamp(36px, 5vh, 64px);
+  height: 2px;
+  background: var(--line-1);
+}
+
+.hscroll-progress-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+/* Skeleton fallback list */
+.service-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: clamp(70px, 9vw, 120px);
+}
+
+.panel--skeleton {
+  gap: 12px;
+}
+
 
 /* ============================================================
    WHY — the light inversion (paper flash)
@@ -1458,14 +1587,10 @@
   margin-bottom: 10px;
 }
 
-.service-row--skeleton {
-  grid-template-columns: 72px minmax(0, 1fr);
-}
-
 .skeleton-index {
-  width: 32px;
-  height: 16px;
-  margin-top: 8px;
+  width: 44px;
+  height: 40px;
+  margin-bottom: 4px;
 }
 
 .skeleton-title {
@@ -1609,21 +1734,8 @@
     justify-content: center;
   }
 
-  .service-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-
-  .service-index {
-    padding-top: 0;
-  }
-
-  .service-explore {
-    display: none;
-  }
-
-  .service-row--skeleton {
-    grid-template-columns: minmax(0, 1fr);
+  .services-head-grid {
+    grid-template-columns: 1fr;
   }
 
   .field-grid {
@@ -1662,10 +1774,9 @@
     transition: none;
   }
 
-  .service-row::before,
-  .service-title,
-  .service-explore,
-  .service-explore svg,
+  .panel::after,
+  .panel-explore svg,
+  .panel-cta-button svg,
   .value-node::before,
   .value-node::after,
   .faq-marker,

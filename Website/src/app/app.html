@@ -103,67 +103,85 @@
     </div>
   </section>
 
-  <!-- ============ SERVICES — catalog ledger ============ -->
+  <!-- ============ SERVICES — pinned horizontal gallery ============ -->
   <section id="services" class="services-section" aria-labelledby="services-title">
-    <div class="section-shell">
-      <div class="services-head">
-        @if (contentStore.loading()) {
-          <div aria-hidden="true">
-            <span class="skeleton-block skeleton-eyebrow"></span>
-            <span class="skeleton-block skeleton-heading"></span>
-            <span class="skeleton-block skeleton-desc-line"></span>
+    <div class="section-shell services-head">
+      @if (contentStore.loading()) {
+        <div aria-hidden="true">
+          <span class="skeleton-block skeleton-eyebrow"></span>
+          <span class="skeleton-block skeleton-heading"></span>
+          <span class="skeleton-block skeleton-desc-line"></span>
+        </div>
+      } @else {
+        <div class="rule-label" data-reveal>
+          <span class="rule-label-text">{{ contentStore.servicesSection().eyebrow }}</span>
+          <span class="rule-label-line" data-rule aria-hidden="true"></span>
+        </div>
+        <div class="services-head-grid">
+          <h2 id="services-title" data-reveal>{{ contentStore.servicesSection().heading }}</h2>
+          <div class="services-head-side" data-reveal>
+            <p class="services-head-desc">{{ contentStore.servicesSection().description }}</p>
+            <p class="services-hint" aria-hidden="true">
+              <span class="services-hint-count">{{ serviceCount() }}</span>
+              <span>capabilities — scroll to explore</span>
+            </p>
           </div>
-        } @else {
-          <div class="rule-label" data-reveal>
-            <span class="rule-label-text">{{ contentStore.servicesSection().eyebrow }}</span>
-            <span class="rule-label-line" data-rule aria-hidden="true"></span>
-          </div>
-          <div class="services-head-grid">
-            <h2 id="services-title" data-reveal>{{ contentStore.servicesSection().heading }}</h2>
-            <p class="services-head-desc" data-reveal>{{ contentStore.servicesSection().description }}</p>
-          </div>
-        }
-      </div>
+        </div>
+      }
+    </div>
 
-      <div class="service-list" aria-label="Gencolink service catalog" [attr.aria-busy]="contentStore.loading()">
-        @if (contentStore.loading()) {
+    <div class="hscroll" aria-label="Gencolink service catalog" [attr.aria-busy]="contentStore.loading()">
+      @if (contentStore.loading()) {
+        <div class="service-fallback">
           @for (row of [0, 1, 2, 3, 4]; track row) {
-            <div class="service-row service-row--skeleton" aria-hidden="true">
+            <div class="panel panel--skeleton" aria-hidden="true">
               <span class="skeleton-block skeleton-index"></span>
-              <span class="service-row-copy">
-                <span class="skeleton-block skeleton-title"></span>
-                <span class="skeleton-block skeleton-body"></span>
-                <span class="skeleton-block skeleton-body skeleton-body--short"></span>
-              </span>
+              <span class="skeleton-block skeleton-title"></span>
+              <span class="skeleton-block skeleton-body"></span>
+              <span class="skeleton-block skeleton-body skeleton-body--short"></span>
             </div>
           }
-        } @else {
+        </div>
+      } @else {
+        <div class="hscroll-track" data-hscroll-track>
           @for (service of contentStore.services(); track service.title; let i = $index) {
-            <article class="service-row" data-reveal-row>
-              <span class="service-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
-              <div class="service-row-copy">
-                <h3 class="service-title">{{ service.title }}</h3>
-                <p class="service-body">{{ service.body }}</p>
-                @if (service.items.length) {
-                  <ul class="service-tags" aria-label="Included capabilities">
-                    @for (tag of service.items; track tag) {
-                      <li>{{ tag }}</li>
-                    }
-                  </ul>
-                }
+            <article class="panel">
+              <span class="panel-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
+              <div class="panel-body">
+                <h3 class="panel-title">{{ service.title }}</h3>
+                <p class="panel-desc">{{ service.body }}</p>
               </div>
+              @if (service.items.length) {
+                <ul class="panel-tags" aria-label="Included capabilities">
+                  @for (tag of service.items; track tag) {
+                    <li>{{ tag }}</li>
+                  }
+                </ul>
+              }
               <button
                 type="button"
-                class="service-explore"
+                class="panel-explore"
                 (click)="scrollTo('contact')"
                 [attr.aria-label]="'Discuss ' + service.title"
               >
+                <span>Start a project</span>
                 <svg lucideArrowRight aria-hidden="true"></svg>
               </button>
             </article>
           }
-        }
-      </div>
+          <article class="panel panel--cta">
+            <p class="panel-cta-lead">Have something else in mind?</p>
+            <button type="button" class="panel-cta-button magnetic" (click)="scrollTo('contact')">
+              Tell us about it
+              <svg lucideArrowRight aria-hidden="true"></svg>
+            </button>
+          </article>
+        </div>
+
+        <div class="hscroll-progress" aria-hidden="true">
+          <span class="hscroll-progress-fill" data-hscroll-fill></span>
+        </div>
+      }
     </div>
   </section>
 
