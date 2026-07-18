@@ -20,9 +20,12 @@ import {
   LucideLink,
   LucideMail,
   LucideMenu,
+  LucideMoon,
+  LucideSun,
   LucideX,
 } from '@lucide/angular';
 import { SiteContentService } from './site-content.service';
+import { ThemeService } from './theme.service';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -36,6 +39,8 @@ gsap.registerPlugin(ScrollTrigger);
     LucideLink,
     LucideMail,
     LucideMenu,
+    LucideMoon,
+    LucideSun,
     LucideX,
   ],
   templateUrl: './app.html',
@@ -46,6 +51,7 @@ export class App implements AfterViewInit, OnDestroy {
   private readonly formBuilder = new FormBuilder();
   private readonly ngZone = inject(NgZone);
   readonly contentStore = inject(SiteContentService);
+  readonly theme = inject(ThemeService);
 
   private readonly contactService = inject(ContactService);
 

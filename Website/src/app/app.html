@@ -11,6 +11,24 @@
     }
   </nav>
 
+  <button
+    class="theme-toggle"
+    type="button"
+    (click)="theme.toggle()"
+    [attr.aria-label]="'Switch to ' + (theme.effective() === 'dark' ? 'light' : 'dark') + ' mode'"
+    [attr.aria-pressed]="theme.effective() === 'light'"
+  >
+    <span class="theme-toggle-track" aria-hidden="true">
+      <span class="theme-toggle-thumb">
+        @if (theme.effective() === 'dark') {
+          <svg lucideMoon aria-hidden="true"></svg>
+        } @else {
+          <svg lucideSun aria-hidden="true"></svg>
+        }
+      </span>
+    </span>
+  </button>
+
   <button class="nav-cta magnetic" type="button" (click)="scrollTo('contact')">
     <span>Let's Talk</span>
     <svg lucideArrowRight aria-hidden="true"></svg>

@@ -69,8 +69,9 @@
   color-scheme: dark;
 }
 
+/* OS light preference — only when the user has NOT chosen a theme manually */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #f6f8fd;
     --bg-raise: #ffffff;
     --glass: rgba(246, 248, 253, 0.78);
@@ -104,9 +105,45 @@
     --wordmark: rgba(11, 19, 48, 0.06);
     --error: #b42318;
 
-    color-scheme: light;
-  }
+    color-scheme: light;}
 }
+
+/* Manual override — set by ThemeService on <html data-theme="light"> */
+:root[data-theme="light"] {
+    --bg: #f6f8fd;
+    --bg-raise: #ffffff;
+    --glass: rgba(246, 248, 253, 0.78);
+    --chip-bg: rgba(22, 33, 98, 0.045);
+
+    --text-hi: #0b1330;
+    --text: #182448;
+    --text-body: #46536b;
+    --text-dim: #67759a;
+
+    --line-1: rgba(22, 33, 98, 0.16);
+    --line-2: rgba(22, 33, 98, 0.08);
+
+    --accent: #0f80cb;
+    --accent-2: #19428b;
+    --on-accent: #ffffff;
+    --glow: rgba(15, 128, 203, 0.28);
+
+    --btn-bg: #0b1330;
+    --btn-fg: #ffffff;
+
+    --invert-bg: #101a52;
+    --invert-title: #ffffff;
+    --invert-body: #b9c5de;
+    --invert-accent: #4ea8e8;
+    --invert-line: rgba(238, 243, 251, 0.16);
+    --invert-skel-a: rgba(238, 243, 251, 0.1);
+    --invert-skel-b: rgba(238, 243, 251, 0.2);
+
+    --grain-o: 0.28;
+    --wordmark: rgba(11, 19, 48, 0.06);
+    --error: #b42318;
+
+    color-scheme: light;}
 
 *,
 *::before,
