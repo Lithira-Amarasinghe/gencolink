@@ -61,65 +61,7 @@
 }
 
 <main id="top">
-  <!-- ============ HERO — the signal field ============ -->
-  <section class="hero" aria-labelledby="hero-title" (pointermove)="heroPointer($event)">
-    <div class="hero-aurora" aria-hidden="true">
-      <span class="aurora-orb aurora-orb--a" data-parallax="-14"></span>
-      <span class="aurora-orb aurora-orb--b" data-parallax="10"></span>
-      <span class="aurora-orb aurora-orb--c" data-parallax="-6"></span>
-      <span class="hero-glow"></span>
-    </div>
-    <div class="hero-gridlines" aria-hidden="true"></div>
-    <div class="hero-grain" aria-hidden="true"></div>
-
-    <div class="hero-shell">
-      <p class="hero-kicker" data-hero-item>
-        <span class="hero-kicker-pulse" aria-hidden="true"></span>
-        Software engineering studio
-      </p>
-
-      <h1 id="hero-title" class="hero-title">
-        @for (word of heroTitleWords(); track $index) {
-          <span class="hero-word-mask"><span class="hero-word" data-hero-word>{{ word }}</span></span>
-        }
-        <span class="hero-word-mask">
-          <span class="hero-word hero-word--highlight" data-hero-word>{{ contentStore.hero().titleHighlight }}</span>
-        </span>
-      </h1>
-
-      <div class="hero-lower">
-        <p class="hero-desc" data-hero-item>{{ contentStore.hero().description }}</p>
-        <div class="hero-actions" data-hero-item>
-          <button type="button" class="hero-cta magnetic" (click)="scrollTo('contact')">
-            {{ contentStore.hero().primaryCta }}
-            <svg lucideArrowRight aria-hidden="true"></svg>
-          </button>
-          <button type="button" class="hero-cta hero-cta--ghost magnetic" (click)="scrollTo('services')">
-            {{ contentStore.hero().secondaryCta }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="hero-marquee" data-hero-item aria-hidden="true">
-      <div class="marquee-track">
-        @for (pass of [0, 1]; track pass) {
-          <div class="marquee-group">
-            @for (point of contentStore.hero().proofPoints; track point) {
-              <span class="marquee-item">
-                <span class="marquee-dot"></span>
-                {{ point }}
-              </span>
-            }
-            <span class="marquee-item">
-              <span class="marquee-dot"></span>
-              {{ contentStore.companyDetails().tagline }}
-            </span>
-          </div>
-        }
-      </div>
-    </div>
-  </section>
+  <app-hero-video />
 
   <!-- ============ SERVICES — pinned horizontal gallery ============ -->
   <section id="services" class="services-section" aria-labelledby="services-title">

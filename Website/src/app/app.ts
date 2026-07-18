@@ -26,12 +26,14 @@ import {
 } from '@lucide/angular';
 import { SiteContentService } from './site-content.service';
 import { ThemeService } from './theme.service';
+import { HeroVideoComponent } from './hero-video/hero-video.component';
 
 gsap.registerPlugin(ScrollTrigger);
 
 @Component({
   selector: 'app-root',
   imports: [
+    HeroVideoComponent,
     ReactiveFormsModule,
     LucideArrowRight,
     LucideCheckCircle,
@@ -62,9 +64,6 @@ export class App implements AfterViewInit, OnDestroy {
   readonly toast = signal<{ type: 'success' | 'error'; message: string } | null>(null);
   readonly currentYear = new Date().getFullYear();
 
-  /** Hero headline split into words so each can be masked and choreographed. */
-  readonly heroTitleWords = computed(() => this.contentStore.hero().title.split(' '));
-
   /** Count shown as the services "N capabilities" measurement label. */
   readonly serviceCount = computed(() =>
     this.contentStore.services().length.toString().padStart(2, '0'),
@@ -94,9 +93,7 @@ export class App implements AfterViewInit, OnDestroy {
    * a blank page.
    */
   private motionContext?: gsap.Context;
-  private introContext?: gsap.Context;
   private headerTrigger?: ScrollTrigger;
-  private introPlayed = false;
   private magnetic: { el: HTMLElement; onMove: (e: PointerEvent) => void; onLeave: () => void }[] = [];
   private resizeTimer?: ReturnType<typeof setTimeout>;
   private lastCanHorizontal?: boolean;
@@ -134,7 +131,6 @@ export class App implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    this.playHeroIntro();
     this.setupScrollAnimation();
     this.setupMagnetic();
     window.addEventListener('resize', this.onResize);
@@ -150,32 +146,10 @@ export class App implements AfterViewInit, OnDestroy {
           }
         },
       });
-    });
-  }
 
-  /** One-shot entrance: masked headline words rise, then kicker/desc/actions cascade. */
-  private playHeroIntro(): void {
-    if (this.introPlayed) return;
-    this.introPlayed = true;
-
-    this.ngZone.runOutsideAngular(() => {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-      this.introContext = gsap.context(() => {
-        const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
-        tl.from('[data-hero-word]', {
-          yPercent: 110,
-          duration: 1.05,
-          stagger: 0.07,
-          delay: 0.15,
-        })
-          .from(
-            '[data-hero-item]',
-            { autoAlpha: 0, y: 24, duration: 0.9, stagger: 0.12 },
-            '-=0.55',
-          )
-          .from('.site-header', { autoAlpha: 0, y: -16, duration: 0.7 }, '-=0.7');
-      });
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        gsap.from('.site-header', { autoAlpha: 0, y: -16, duration: 0.7, delay: 0.2 });
+      }
     });
   }
 
@@ -317,19 +291,10 @@ export class App implements AfterViewInit, OnDestroy {
     });
   }
 
-  /** Pointer-tracked glow inside the hero (CSS vars drive the gradient). */
-  heroPointer(event: PointerEvent): void {
-    const hero = event.currentTarget as HTMLElement;
-    const r = hero.getBoundingClientRect();
-    hero.style.setProperty('--mx', `${(((event.clientX - r.left) / r.width) * 100).toFixed(2)}%`);
-    hero.style.setProperty('--my', `${(((event.clientY - r.top) / r.height) * 100).toFixed(2)}%`);
-  }
-
   ngOnDestroy(): void {
     window.removeEventListener('resize', this.onResize);
     clearTimeout(this.resizeTimer);
     this.motionContext?.revert();
-    this.introContext?.revert();
     this.headerTrigger?.kill();
     this.magnetic.forEach(({ el, onMove, onLeave }) => {
       el.removeEventListener('pointermove', onMove);

@@ -319,319 +319,6 @@
   }
 }
 
-/* ============================================================
-   HERO — the signal field
-   ============================================================ */
-
-.hero {
-  --mx: 50%;
-  --my: 38%;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  min-height: 100svh;
-  overflow: hidden;
-  background: var(--bg);
-  isolation: isolate;
-}
-
-/* Aurora light system */
-.hero-aurora {
-  position: absolute;
-  inset: 0;
-  z-index: -3;
-}
-
-.aurora-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  will-change: transform;
-}
-
-.aurora-orb--a {
-  top: -18%;
-  left: -10%;
-  width: 58vw;
-  height: 58vw;
-  background: radial-gradient(circle, rgba(22, 33, 98, 0.9) 0%, rgba(22, 33, 98, 0) 65%);
-  animation: orb-drift-a 26s ease-in-out infinite alternate;
-}
-
-.aurora-orb--b {
-  top: 4%;
-  right: -16%;
-  width: 52vw;
-  height: 52vw;
-  background: radial-gradient(circle, rgba(15, 128, 203, 0.55) 0%, rgba(15, 128, 203, 0) 62%);
-  animation: orb-drift-b 32s ease-in-out infinite alternate;
-}
-
-.aurora-orb--c {
-  bottom: -22%;
-  left: 24%;
-  width: 46vw;
-  height: 46vw;
-  background: radial-gradient(circle, rgba(46, 197, 255, 0.32) 0%, rgba(46, 197, 255, 0) 60%);
-  animation: orb-drift-c 22s ease-in-out infinite alternate;
-}
-
-@keyframes orb-drift-a {
-  to {
-    transform: translate(6vw, 5vh) scale(1.08);
-  }
-}
-
-@keyframes orb-drift-b {
-  to {
-    transform: translate(-5vw, 7vh) scale(0.94);
-  }
-}
-
-@keyframes orb-drift-c {
-  to {
-    transform: translate(4vw, -6vh) scale(1.1);
-  }
-}
-
-/* Pointer-tracked glow */
-.hero-glow {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    560px circle at var(--mx) var(--my),
-    rgba(46, 197, 255, 0.1),
-    transparent 70%
-  );
-  transition: background 120ms linear;
-}
-
-/* Engineering gridlines, fading toward the top */
-.hero-gridlines {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  background:
-    linear-gradient(var(--line-2) 1px, transparent 1px) 0 0 / 100% 88px,
-    linear-gradient(90deg, var(--line-2) 1px, transparent 1px) 0 0 / 88px 100%;
-  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, transparent 78%);
-  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, transparent 78%);
-}
-
-/* Film grain (inline SVG noise) */
-.hero-grain {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  opacity: var(--grain-o);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  pointer-events: none;
-}
-
-.hero-shell {
-  width: min(1200px, 100% - clamp(40px, 9vw, 128px));
-  margin-inline: auto;
-  padding-top: clamp(120px, 18vh, 190px);
-}
-
-.hero-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 clamp(24px, 3.5vh, 42px);
-  padding: 8px 16px;
-  border: 1px solid var(--line-1);
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-body);
-  background: var(--chip-bg);
-}
-
-.hero-kicker-pulse {
-  position: relative;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.hero-kicker-pulse::after {
-  content: "";
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 1px solid var(--accent);
-  animation: pulse-ring 2.2s var(--ease-out) infinite;
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.6);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.8);
-    opacity: 0;
-  }
-}
-
-.hero-title {
-  margin: 0;
-  max-width: 14ch;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-stretch: 120%;
-  font-size: clamp(2.9rem, 8.2vw, 6rem);
-  line-height: 0.98;
-  letter-spacing: -0.03em;
-  color: var(--text-hi);
-  text-transform: none;
-}
-
-.hero-word-mask {
-  display: inline-block;
-  overflow: hidden;
-  vertical-align: top;
-  padding-bottom: 0.08em;
-  margin-right: 0.22em;
-}
-
-.hero-word {
-  display: inline-block;
-  will-change: transform;
-}
-
-.hero-word--highlight {
-  color: var(--accent);
-  text-shadow: 0 0 42px rgba(46, 197, 255, 0.45);
-}
-
-.hero-lower {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: clamp(28px, 5vw, 80px);
-  margin-top: clamp(30px, 5vh, 56px);
-  padding-bottom: clamp(40px, 7vh, 84px);
-}
-
-.hero-desc {
-  margin: 0;
-  max-width: 46ch;
-  font-size: clamp(16px, 1.35vw, 18.5px);
-  line-height: 1.7;
-  color: var(--text-body);
-  text-wrap: pretty;
-}
-
-.hero-actions {
-  display: flex;
-  gap: 14px;
-  flex-shrink: 0;
-}
-
-.hero-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-  padding: 16px 30px;
-  font-family: var(--font-body);
-  font-size: 15.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background-color 250ms var(--ease-out),
-    color 250ms var(--ease-out),
-    box-shadow 250ms var(--ease-out);
-  box-shadow: 0 0 0 rgba(46, 197, 255, 0);
-}
-
-.hero-cta svg {
-  width: 16px;
-  height: 16px;
-  transition: transform 250ms var(--ease-out);
-}
-
-.hero-cta:hover,
-.hero-cta:focus-visible {
-  box-shadow: 0 8px 42px var(--glow);
-}
-
-.hero-cta:hover svg {
-  transform: translateX(4px);
-}
-
-.hero-cta--ghost {
-  background: transparent;
-  border-color: var(--line-1);
-  color: var(--text);
-  box-shadow: none;
-}
-
-.hero-cta--ghost:hover,
-.hero-cta--ghost:focus-visible {
-  border-color: var(--text);
-  box-shadow: none;
-}
-
-/* Proof-point marquee — the hero's baseboard */
-.hero-marquee {
-  position: relative;
-  border-top: 1px solid var(--line-2);
-  padding: 18px 0;
-  overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
-  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
-}
-
-.marquee-track {
-  display: flex;
-  width: max-content;
-  animation: marquee 30s linear infinite;
-}
-
-.hero-marquee:hover .marquee-track {
-  animation-play-state: paused;
-}
-
-.marquee-group {
-  display: flex;
-  flex-shrink: 0;
-}
-
-.marquee-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding-right: clamp(36px, 5vw, 72px);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  white-space: nowrap;
-}
-
-.marquee-dot {
-  width: 5px;
-  height: 5px;
-  background: var(--accent);
-  rotate: 45deg;
-}
-
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
-
 /* ---------- Section headings ---------- */
 
 .services-section h2,
@@ -667,6 +354,14 @@
 
 .services-section {
   position: relative;
+  z-index: 1;
+  /* Pulls this section up over the tail of the hero's pinned scroll runway.
+     hero-video's ScrollTrigger ends at innerHeight * scrollLengthVh (4), and
+     the canvas/copy fade completes by 75% of that distance — so the final
+     25% (100vh) is dead scroll with nothing left to reveal. This margin
+     removes exactly that gap. Keep in sync with scrollLengthVh in
+     hero-video.component.ts: -( (1 - 0.75) * scrollLengthVh * 100vh ). */
+  margin-top: -100vh;
   padding: clamp(90px, 12vw, 160px) 0 0;
   background: var(--bg);
 }
@@ -1761,11 +1456,6 @@
   .footer-brand {
     grid-column: 1 / -1;
   }
-
-  .hero-lower {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 }
 
 @media (max-width: 760px) {
@@ -1780,19 +1470,6 @@
 
   .menu-button {
     display: inline-flex;
-  }
-
-  .hero-title {
-    font-size: clamp(2.4rem, 11.5vw, 3.4rem);
-  }
-
-  .hero-actions {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .hero-cta {
-    justify-content: center;
   }
 
   .services-head-grid {
@@ -1818,23 +1495,6 @@
 /* ---------- Reduced motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora-orb {
-    animation: none;
-  }
-
-  .hero-kicker-pulse::after {
-    animation: none;
-  }
-
-  .marquee-track {
-    animation: none;
-    flex-wrap: wrap;
-  }
-
-  .hero-glow {
-    transition: none;
-  }
-
   .theme-toggle,
   .theme-toggle-thumb,
   .panel::after,
