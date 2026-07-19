@@ -10,10 +10,13 @@
   isolation: isolate;
   /* .hero-dots deliberately bleeds -40px past its own edges for full-bleed
      texture coverage; without clipping it here that bleed pushes real
-     horizontal scroll onto the page (confirmed: scrollTo(500,0) actually
-     moved scrollX, even with body{overflow-x:hidden} — html was the true
-     scrolling box). Canvas is position:fixed, unaffected by this clip. */
-  overflow-x: hidden;
+     scroll onto the page (confirmed: scrollTo(500,0) actually moved
+     scrollX, even with body{overflow-x:hidden} — html was the true
+     scrolling box). Canvas is position:fixed, unaffected by this clip.
+     Both axes must be set together: per spec, setting only overflow-x
+     forces overflow-y to compute as auto, which is exactly what was
+     spawning a second, section-local scrollbar here. */
+  overflow: hidden;
 }
 
 /* ============ HALFTONE DOT FIELD (paper texture) ============ */
@@ -59,6 +62,21 @@
 @keyframes hero-dots-drift-reverse {
   from { background-position: 13px 13px; }
   to { background-position: 273px -117px; }
+}
+
+/* Paused via IntersectionObserver (hero.component.ts) once the section is
+   scrolled out of view — background-position animations paint, they don't
+   composite, so this stops real main-thread cost from accumulating behind
+   the fold for the rest of the page's scroll. */
+.hero--offscreen .hero-dots,
+.hero--offscreen .hero-dots::after {
+  animation-play-state: paused;
+}
+
+/* Same reasoning for the letters' infinite glow pulse — text-shadow is
+   also a paint, not a composite. */
+.hero--offscreen .hero-wordmark-char {
+  animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {

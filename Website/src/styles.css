@@ -37,6 +37,15 @@
   --btn-bg: #eef3fb;
   --btn-fg: #0b1330;
 
+  /* Custom cursor — a small precision ring + dot in the theme's own accent,
+     instead of the generic OS arrow. Encoded as full `cursor` values (image +
+     hotspot + fallback keyword) so both interactive and non-interactive
+     elements can just do `cursor: var(--cursor-default|pointer)`. */
+  --cursor-default: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='7' fill='none' stroke='%232ec5ff' stroke-width='1.4' opacity='0.85'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%232ec5ff'/%3E%3C/svg%3E")
+    12 12, auto;
+  --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='11' fill='none' stroke='%232ec5ff' stroke-width='1.6' opacity='0.9'/%3E%3Ccircle cx='15' cy='15' r='3' fill='%232ec5ff'/%3E%3C/svg%3E")
+    15 15, pointer;
+
   /* "Why" section surface — a raised dark panel in dark mode (NOT a light
      flip: it must stay legibly dark like the rest of the theme), a raised
      light panel in light mode. Same names, theme-matched values each side. */
@@ -95,6 +104,11 @@
     --btn-bg: #0b1330;
     --btn-fg: #ffffff;
 
+    --cursor-default: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='7' fill='none' stroke='%230f80cb' stroke-width='1.4' opacity='0.85'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%230f80cb'/%3E%3C/svg%3E")
+      12 12, auto;
+    --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='11' fill='none' stroke='%230f80cb' stroke-width='1.6' opacity='0.9'/%3E%3Ccircle cx='15' cy='15' r='3' fill='%230f80cb'/%3E%3C/svg%3E")
+      15 15, pointer;
+
     --invert-bg: #e9eefa;
     --invert-title: #0b1330;
     --invert-body: #46536b;
@@ -132,6 +146,11 @@
 
     --btn-bg: #0b1330;
     --btn-fg: #ffffff;
+
+    --cursor-default: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='7' fill='none' stroke='%230f80cb' stroke-width='1.4' opacity='0.85'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%230f80cb'/%3E%3C/svg%3E")
+      12 12, auto;
+    --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='11' fill='none' stroke='%230f80cb' stroke-width='1.6' opacity='0.9'/%3E%3Ccircle cx='15' cy='15' r='3' fill='%230f80cb'/%3E%3C/svg%3E")
+      15 15, pointer;
 
     --invert-bg: #e9eefa;
     --invert-title: #0b1330;
@@ -175,6 +194,32 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  cursor: var(--cursor-default);
+}
+
+/* Interactive elements swap to the larger, filled-in ring — same shape
+   language as the default cursor, just reading as "this is clickable"
+   instead of relying on the OS's generic hand icon. Skipped on touch/coarse
+   pointers, where a custom cursor image is meaningless and can even ghost
+   on-screen on some Android WebViews. */
+@media (pointer: fine) {
+  /* !important is deliberate and scoped to this one property: several
+     component styles (.theme-toggle, .menu-button, .nav-cta, .magnetic, …)
+     set `cursor: pointer` with class-selector specificity that a plain
+     element selector here can never outrank. Overriding those individually
+     across files isn't worth it for a single presentational property with
+     zero cascading side effects. */
+  a,
+  button,
+  [role="button"],
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select,
+  summary,
+  label,
+  .magnetic {
+    cursor: var(--cursor-pointer) !important;
+  }
 }
 
 app-root {

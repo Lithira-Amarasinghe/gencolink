@@ -185,7 +185,6 @@ export class App implements AfterViewInit, OnDestroy {
           gsap.from(el, {
             autoAlpha: 0,
             y: 44,
-            filter: 'blur(6px)',
             duration: 1,
             ease: 'expo.out',
             // 'top 81%' sits between the too-early 88% (fires the instant an
@@ -203,8 +202,12 @@ export class App implements AfterViewInit, OnDestroy {
         // frame (a fast scroll, or several already in view together) still
         // stagger against each other for a natural cascade; a slow scroll
         // through a long list reveals rows one at a time, on their own.
+        // opacity + transform only (no filter:blur) — blur forces a paint
+        // pass rather than a compositor-only animation, and firing it across
+        // a whole staggered batch during a fast scroll was a real source of
+        // dropped frames ("vibration") right at the trigger moment.
         gsap.utils.toArray<HTMLElement>('[data-reveal-row]').forEach((row) => {
-          gsap.set(row, { autoAlpha: 0, y: 48, filter: 'blur(6px)' });
+          gsap.set(row, { autoAlpha: 0, y: 48 });
         });
 
         const rowsByParent = new Map<Element, HTMLElement[]>();
@@ -224,7 +227,6 @@ export class App implements AfterViewInit, OnDestroy {
               gsap.to(batch, {
                 autoAlpha: 1,
                 y: 0,
-                filter: 'blur(0px)',
                 duration: 0.9,
                 ease: 'expo.out',
                 stagger: 0.12,

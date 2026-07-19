@@ -391,25 +391,41 @@
   padding-bottom: clamp(70px, 9vw, 120px);
 }
 
+/* Full-bleed row: the highlight/border run edge to edge of the viewport.
+   .service-row-inner (below) re-applies the section-shell's own width
+   logic so the actual content still lines up with the heading above it. */
 .service-row {
   position: relative;
+  border-bottom: 1px solid var(--line-1);
+  overflow: hidden;
+  transition: border-color 300ms var(--ease-out);
+}
+
+.service-row-inner {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, 100% - clamp(40px, 9vw, 128px));
+  margin-inline: auto;
   display: grid;
   grid-template-columns: clamp(64px, 8vw, 120px) minmax(0, 1fr);
   gap: clamp(16px, 3vw, 40px);
   align-items: center;
-  padding: clamp(26px, 3.4vw, 40px) clamp(8px, 1.5vw, 20px);
-  border-bottom: 1px solid var(--line-1);
+  padding-block: clamp(26px, 3.4vw, 40px);
 }
 
 .service-row::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(15, 128, 203, 0.1), rgba(15, 128, 203, 0.02));
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
   transform: scaleY(0);
   transform-origin: bottom center;
   transition: transform 420ms var(--ease-out-quint);
   pointer-events: none;
+}
+
+.service-row:hover {
+  border-color: var(--accent);
 }
 
 .service-row:hover::before {

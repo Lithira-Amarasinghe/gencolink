@@ -85,10 +85,16 @@
         }
       </div>
 
-      <div class="service-list" aria-label="Gencolink service catalog" [attr.aria-busy]="contentStore.loading()">
-        @if (contentStore.loading()) {
-          @for (row of [0, 1, 2, 3, 4]; track row) {
-            <div class="service-row service-row--skeleton" aria-hidden="true">
+    </div>
+
+    <!-- Full-bleed row list: each row's hover highlight runs edge to edge,
+         while its content stays aligned to the same column as the heading
+         above (via .service-row-inner, which re-applies the shell width). -->
+    <div class="service-list" aria-label="Gencolink service catalog" [attr.aria-busy]="contentStore.loading()">
+      @if (contentStore.loading()) {
+        @for (row of [0, 1, 2, 3, 4]; track row) {
+          <div class="service-row service-row--skeleton" aria-hidden="true">
+            <div class="service-row-inner">
               <span class="skeleton-block skeleton-index"></span>
               <span class="service-row-copy">
                 <span class="skeleton-block skeleton-title"></span>
@@ -96,19 +102,21 @@
                 <span class="skeleton-block skeleton-body skeleton-body--short"></span>
               </span>
             </div>
-          }
-        } @else {
-          @for (service of contentStore.services(); track service.title; let i = $index) {
-            <article class="service-row" data-reveal-row>
+          </div>
+        }
+      } @else {
+        @for (service of contentStore.services(); track service.title; let i = $index) {
+          <article class="service-row" data-reveal-row>
+            <div class="service-row-inner">
               <span class="service-index" aria-hidden="true">{{ (i + 1).toString().padStart(2, '0') }}</span>
               <div class="service-row-copy">
                 <h3 class="service-title">{{ service.title }}</h3>
                 <p class="service-body">{{ service.body }}</p>
               </div>
-            </article>
-          }
+            </div>
+          </article>
         }
-      </div>
+      }
     </div>
   </section>
 

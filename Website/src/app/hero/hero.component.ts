@@ -84,6 +84,8 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
   private washes: Wash[] = [];
   private rafId?: number;
   private resizeObserver?: ResizeObserver;
+  private visibilityObserver?: IntersectionObserver;
+  private heroVisible = true;
   private destroyed = false;
   private reducedMotion = false;
   private width = 0;
@@ -158,6 +160,25 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
       this.resizeObserver.observe(scene);
       this.resize();
 
+      // The constellation sim is O(n²) on link-distance checks (up to 132
+      // nodes) plus a full canvas repaint, every single frame — real work
+      // competing with the main thread for scroll's frame budget. Once the
+      // hero scrolls off-screen there's nothing to gain from still running
+      // it, so pause the loop entirely rather than just skipping the draw;
+      // this is the fix for the scroll feeling "vibrate-y" further down the
+      // page, not just a hero-local optimization.
+      this.visibilityObserver = new IntersectionObserver(
+        ([entry]) => {
+          this.heroVisible = entry.isIntersecting;
+          // The dot field's drift is a `background-position` CSS animation
+          // (a paint, not a compositor-only transform) that otherwise runs
+          // forever — pause it too while off-screen for the same reason.
+          scene.classList.toggle('hero--offscreen', !entry.isIntersecting);
+        },
+        { threshold: 0 },
+      );
+      this.visibilityObserver.observe(scene);
+
       if (!this.reducedMotion) {
         this.onPointerMove = (e: PointerEvent) => {
           this.lastRealMoveAt = performance.now();
@@ -191,8 +212,10 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
         const start = performance.now();
         const loop = (t: number): void => {
           if (this.destroyed) return;
-          this.step();
-          this.render((t - start) / 1000, false);
+          if (this.heroVisible) {
+            this.step();
+            this.render((t - start) / 1000, false);
+          }
           this.rafId = requestAnimationFrame(loop);
         };
         this.rafId = requestAnimationFrame(loop);
@@ -591,6 +614,7 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
       if (this.onPointerDown) scene.removeEventListener('pointerdown', this.onPointerDown);
     }
     this.resizeObserver?.disconnect();
+    this.visibilityObserver?.disconnect();
     this.scrollContext?.revert();
   }
 
