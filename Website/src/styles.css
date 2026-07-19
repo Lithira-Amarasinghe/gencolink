@@ -209,12 +209,12 @@ body {
      element selector here can never outrank. Overriding those individually
      across files isn't worth it for a single presentational property with
      zero cascading side effects. */
-  a,
-  button,
-  [role="button"],
-  input:not([type="checkbox"]):not([type="radio"]),
-  textarea,
-  select,
+  a:not(:disabled),
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  input:not([type="checkbox"]):not([type="radio"]):not(:disabled),
+  textarea:not(:disabled),
+  select:not(:disabled),
   summary,
   label,
   .magnetic {

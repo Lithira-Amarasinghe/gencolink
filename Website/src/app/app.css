@@ -894,18 +894,53 @@
   color: var(--text-dim);
 }
 
+/* Leading icon + input share one underline so the icon reads as part of
+   the field, not a decoration bolted beside it. */
+.field-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--line-1);
+  transition: border-color 250ms var(--ease-out);
+}
+
+.field-input svg {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  color: var(--text-dim);
+  transition: color 250ms var(--ease-out);
+}
+
+.field-input:focus-within {
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 var(--accent);
+}
+
+.field-input:focus-within svg {
+  color: var(--accent);
+}
+
+.message-field .field-input {
+  align-items: flex-start;
+}
+
+.message-field .field-input svg {
+  margin-top: 13px;
+}
+
 .contact-section input,
 .contact-section textarea {
   appearance: none;
+  flex: 1;
+  min-width: 0;
   border: 0;
-  border-bottom: 1px solid var(--line-1);
   background: transparent;
-  padding: 10px 2px 12px;
+  padding: 10px 2px 12px 0;
   font-family: var(--font-body);
   font-size: 16.5px;
   color: var(--text-hi);
   border-radius: 0;
-  transition: border-color 250ms var(--ease-out);
 }
 
 .contact-section textarea {
@@ -922,14 +957,21 @@
 .contact-section input:focus-visible,
 .contact-section textarea:focus-visible {
   outline: none;
-  border-bottom-color: var(--accent);
-  box-shadow: 0 1px 0 var(--accent);
 }
 
 .form-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: -8px 0 0;
   font-size: 14px;
   color: var(--error);
+}
+
+.form-alert svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
 }
 
 .submit-button {
@@ -969,6 +1011,22 @@
 .submit-button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.submit-button svg.spin {
+  animation: submit-spin 0.8s linear infinite;
+}
+
+@keyframes submit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submit-button svg.spin {
+    animation: none;
+  }
 }
 
 /* ============================================================

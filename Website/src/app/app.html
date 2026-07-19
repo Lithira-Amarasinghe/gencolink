@@ -250,26 +250,42 @@
         <div class="field-grid">
           <label>
             <span>Full name</span>
-            <input type="text" formControlName="name" autocomplete="name" placeholder="Your name" />
+            <span class="field-input">
+              <svg lucideUser aria-hidden="true"></svg>
+              <input type="text" formControlName="name" autocomplete="name" placeholder="Your name" />
+            </span>
           </label>
           <label>
             <span>Work email</span>
-            <input type="email" formControlName="email" autocomplete="email" placeholder="you@company.com" />
+            <span class="field-input">
+              <svg lucideMail aria-hidden="true"></svg>
+              <input type="email" formControlName="email" autocomplete="email" placeholder="you@company.com" />
+            </span>
           </label>
         </div>
         <label>
           <span>Company <em>(optional)</em></span>
-          <input type="text" formControlName="company" autocomplete="organization" placeholder="Your company" />
+          <span class="field-input">
+            <svg lucideBuilding2 aria-hidden="true"></svg>
+            <input type="text" formControlName="company" autocomplete="organization" placeholder="Your company" />
+          </span>
         </label>
         <label class="message-field">
           <span>How can we help?</span>
-          <textarea formControlName="message" rows="5" placeholder="Share a few details about your project"></textarea>
+          <span class="field-input">
+            <svg lucideMessageSquare aria-hidden="true"></svg>
+            <textarea formControlName="message" rows="5" placeholder="Share a few details about your project"></textarea>
+          </span>
         </label>
         @if (submitted() && contactForm.invalid) {
-          <p class="form-alert" role="alert">Please add your name, a valid email, and a short message.</p>
+          <p class="form-alert" role="alert">
+            <svg lucideCircleAlert aria-hidden="true"></svg>
+            Please add your name, a valid email, and a short message.
+          </p>
         }
         <button class="submit-button magnetic" type="submit" [disabled]="submitting()">
           @if (submitting()) {
+            <svg lucideLoaderCircle class="spin" aria-hidden="true"></svg>
             Sending…
           } @else {
             Send message
@@ -321,12 +337,20 @@
         <div class="social-links" aria-label="Social links">
           @if (contentStore.companyDetails().linkedinUrl) {
             <a [href]="contentStore.companyDetails().linkedinUrl" aria-label="LinkedIn">
-              <svg lucideLink aria-hidden="true"></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45Z"
+                />
+              </svg>
             </a>
           }
           @if (contentStore.companyDetails().githubUrl) {
             <a [href]="contentStore.companyDetails().githubUrl" aria-label="GitHub">
-              <svg lucideCode2 aria-hidden="true"></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M12 2a10 10 0 0 0-3.16 19.5c.5.1.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.56-1.11-4.56-4.95 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.4 9.4 0 0 1 5 0c1.9-1.29 2.74-1.02 2.74-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.69 0 3.85-2.35 4.7-4.58 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"
+                />
+              </svg>
             </a>
           }
           @if (contentStore.companyDetails().facebookUrl) {
@@ -383,7 +407,7 @@
     @if (t.type === 'success') {
       <svg lucideCheckCircle aria-hidden="true"></svg>
     } @else {
-      <svg lucideX aria-hidden="true"></svg>
+      <svg lucideCircleAlert aria-hidden="true"></svg>
     }
     <span>{{ t.message }}</span>
   </div>
