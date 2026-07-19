@@ -26,14 +26,14 @@ import {
 } from '@lucide/angular';
 import { SiteContentService } from './site-content.service';
 import { ThemeService } from './theme.service';
-import { HeroVideoComponent } from './hero-video/hero-video.component';
+import { HeroComponent } from './hero/hero.component';
 
 gsap.registerPlugin(ScrollTrigger);
 
 @Component({
   selector: 'app-root',
   imports: [
-    HeroVideoComponent,
+    HeroComponent,
     ReactiveFormsModule,
     LucideArrowRight,
     LucideCheckCircle,
@@ -96,22 +96,10 @@ export class App implements AfterViewInit, OnDestroy {
   private headerTrigger?: ScrollTrigger;
   private magnetic: { el: HTMLElement; onMove: (e: PointerEvent) => void; onLeave: () => void }[] = [];
   private resizeTimer?: ReturnType<typeof setTimeout>;
-  private lastCanHorizontal?: boolean;
   private onResize = (): void => {
-    // Rebuild only when crossing the horizontal breakpoint — the pinned
-    // horizontal gallery is a different DOM shape (pin-spacer, class toggle)
-    // than the vertical stack, so ScrollTrigger's own refresh can't switch it.
     clearTimeout(this.resizeTimer);
     this.resizeTimer = setTimeout(() => {
-      const canHorizontal =
-        !!document.querySelector('.hscroll') &&
-        !!document.querySelector('[data-hscroll-track]') &&
-        window.matchMedia('(min-width: 900px)').matches;
-      if (canHorizontal !== this.lastCanHorizontal) {
-        this.setupScrollAnimation();
-      } else {
-        ScrollTrigger.refresh();
-      }
+      ScrollTrigger.refresh();
     }, 220);
   };
 
@@ -131,6 +119,18 @@ export class App implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
+    // Steadier pinning: ignore transient mobile viewport-resize (address bar)
+    // refreshes that otherwise cause the pinned sections to twitch mid-scroll.
+    ScrollTrigger.config({ ignoreMobileResize: true });
+
+    // Normalize scroll input across browsers/devices (trackpad, touch,
+    // mouse-wheel) into one consistent, jank-free feed for every scrubbed
+    // ScrollTrigger — the standard GSAP fix for the small up/down flashes
+    // that appear when native smooth-scroll fights a scrub-driven tween.
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      ScrollTrigger.normalizeScroll(true);
+    }
+
     this.setupScrollAnimation();
     this.setupMagnetic();
     window.addEventListener('resize', this.onResize);
@@ -163,39 +163,7 @@ export class App implements AfterViewInit, OnDestroy {
         return;
       }
 
-      // Services: pinned horizontal-scroll gallery on wide viewports. Vertical
-      // scroll drives the track sideways. Below 900px (or reduced motion, or
-      // coarse pointer) it stays a readable vertical stack — the CSS default,
-      // so content is always visible even with no JS.
-      const hscroll = document.querySelector<HTMLElement>('.hscroll');
-      const track = document.querySelector<HTMLElement>('[data-hscroll-track]');
-      hscroll?.classList.remove('hscroll--horizontal');
-      const canHorizontal =
-        !!hscroll && !!track && window.matchMedia('(min-width: 900px)').matches;
-      this.lastCanHorizontal = canHorizontal;
-
       this.motionContext = gsap.context(() => {
-        if (canHorizontal && hscroll && track) {
-          hscroll.classList.add('hscroll--horizontal');
-          const fill = document.querySelector<HTMLElement>('[data-hscroll-fill]');
-          const distance = () => Math.max(0, track.scrollWidth - hscroll.clientWidth);
-
-          gsap.to(track, {
-            x: () => -distance(),
-            ease: 'none',
-            scrollTrigger: {
-              trigger: hscroll,
-              start: 'top top',
-              end: () => '+=' + distance(),
-              pin: true,
-              scrub: 1,
-              invalidateOnRefresh: true,
-              onUpdate: (self) => {
-                if (fill) fill.style.transform = `scaleX(${self.progress})`;
-              },
-            },
-          });
-        }
 
         // Aurora orbs drift on scroll (scrubbed parallax).
         gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((el) => {
@@ -207,45 +175,73 @@ export class App implements AfterViewInit, OnDestroy {
           });
         });
 
-        // Headings, intro copy, forms — single rise + fade per element.
+        // Headings, intro copy, forms — a single unmistakable rise + fade +
+        // soft focus-pull per element. expo.out gives a fast, confident
+        // finish (steep at the start, eases hard into place) rather than the
+        // flatter power3 curve, so the motion actually reads as it happens
+        // instead of blending into a generic fade. `once: true` guarantees
+        // it fires exactly one time per element, never replaying on re-scroll.
         gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach((el) => {
           gsap.from(el, {
             autoAlpha: 0,
-            y: 28,
-            duration: 0.9,
-            ease: 'power3.out',
-            scrollTrigger: { trigger: el, start: 'top 88%' },
+            y: 44,
+            filter: 'blur(6px)',
+            duration: 1,
+            ease: 'expo.out',
+            // 'top 81%' sits between the too-early 88% (fires the instant an
+            // edge clips the bottom of the screen) and the too-late 75% —
+            // the element is already a bit into the viewport before motion
+            // starts, but the reveal still reads as prompt, not delayed.
+            scrollTrigger: { trigger: el, start: 'top 81%', once: true },
           });
         });
 
-        // Ledger rows (services / values / faqs) — staggered per container.
-        const rows = gsap.utils.toArray<HTMLElement>('[data-reveal-row]');
-        const byParent = new Map<Element, HTMLElement[]>();
-        rows.forEach((row) => {
+        // Ledger rows (services / values / faqs) — each row gets its OWN
+        // trigger via ScrollTrigger.batch, so it animates in exactly when IT
+        // individually scrolls into view, not the moment the section's first
+        // row appears. Rows that happen to cross the threshold in the same
+        // frame (a fast scroll, or several already in view together) still
+        // stagger against each other for a natural cascade; a slow scroll
+        // through a long list reveals rows one at a time, on their own.
+        gsap.utils.toArray<HTMLElement>('[data-reveal-row]').forEach((row) => {
+          gsap.set(row, { autoAlpha: 0, y: 48, filter: 'blur(6px)' });
+        });
+
+        const rowsByParent = new Map<Element, HTMLElement[]>();
+        gsap.utils.toArray<HTMLElement>('[data-reveal-row]').forEach((row) => {
           const parent = row.parentElement ?? document.body;
-          const group = byParent.get(parent) ?? [];
+          const group = rowsByParent.get(parent) ?? [];
           group.push(row);
-          byParent.set(parent, group);
+          rowsByParent.set(parent, group);
         });
-        byParent.forEach((group) => {
-          gsap.from(group, {
-            autoAlpha: 0,
-            y: 36,
-            duration: 0.85,
-            ease: 'power3.out',
-            stagger: 0.09,
-            scrollTrigger: { trigger: group[0], start: 'top 90%' },
+        rowsByParent.forEach((group) => {
+          ScrollTrigger.batch(group, {
+            // Same 81% threshold as the single-element reveals above, for one
+            // consistent "how far into view before it animates" feel site-wide.
+            start: 'top 81%',
+            once: true,
+            onEnter: (batch) =>
+              gsap.to(batch, {
+                autoAlpha: 1,
+                y: 0,
+                filter: 'blur(0px)',
+                duration: 0.9,
+                ease: 'expo.out',
+                stagger: 0.12,
+                overwrite: true,
+              }),
           });
         });
 
-        // Hairline rules draw in from the left.
+        // Hairline rules draw in from the left, alongside the kicker label
+        // they sit under — same 81% threshold so the two move together.
         gsap.utils.toArray<HTMLElement>('[data-rule]').forEach((el) => {
           gsap.from(el, {
             scaleX: 0,
             transformOrigin: 'left center',
             duration: 1.1,
             ease: 'power4.out',
-            scrollTrigger: { trigger: el, start: 'top 92%' },
+            scrollTrigger: { trigger: el, start: 'top 81%', once: true },
           });
         });
 

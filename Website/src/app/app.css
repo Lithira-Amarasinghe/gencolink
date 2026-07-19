@@ -204,18 +204,16 @@
   background: var(--accent);
   color: var(--on-accent);
   transform: translateX(0);
-  transition: transform 380ms var(--ease-out-quint);
+  transition: transform 200ms var(--ease-out-quint);
 }
 
-/* Light on screen → thumb slides to the sun side (right). */
-:root[data-theme="light"] .theme-toggle-thumb {
+/* Light on screen → thumb slides to the sun side (right). Driven by a
+   template class binding (theme.effective()) rather than a :root attribute
+   selector — Angular's emulated style encapsulation scopes :root selectors
+   with the component's content attribute, which <html> can never carry, so
+   a :root[data-theme] rule silently never matches from a component stylesheet. */
+.theme-toggle-thumb--light {
   transform: translateX(26px);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) .theme-toggle-thumb {
-    transform: translateX(26px);
-  }
 }
 
 .theme-toggle-thumb svg {
@@ -355,13 +353,6 @@
 .services-section {
   position: relative;
   z-index: 1;
-  /* Pulls this section up over the tail of the hero's pinned scroll runway.
-     hero-video's ScrollTrigger ends at innerHeight * scrollLengthVh (4), and
-     the canvas/copy fade completes by 75% of that distance — so the final
-     25% (100vh) is dead scroll with nothing left to reveal. This margin
-     removes exactly that gap. Keep in sync with scrollLengthVh in
-     hero-video.component.ts: -( (1 - 0.75) * scrollLengthVh * 100vh ). */
-  margin-top: -100vh;
   padding: clamp(90px, 12vw, 160px) 0 0;
   background: var(--bg);
 }
@@ -393,270 +384,95 @@
   text-wrap: pretty;
 }
 
-.services-hint {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-.services-hint-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 34px;
-  height: 34px;
-  padding: 0 8px;
-  border: 1px solid var(--line-1);
-  color: var(--accent);
-  font-size: 13px;
-}
-
-/* --- The pinned viewport --- */
-
-.hscroll {
-  position: relative;
-}
-
-.hscroll-track {
+.service-list {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 0 0 clamp(70px, 9vw, 120px);
-  will-change: transform;
-}
-
-/* Horizontal mode (JS-enhanced, ≥900px) */
-.hscroll--horizontal {
-  height: 100vh;
-  height: 100svh;
-  overflow: hidden;
-}
-
-.hscroll--horizontal .hscroll-track {
-  flex-direction: row;
-  align-items: center;
-  gap: clamp(20px, 2.4vw, 40px);
-  width: max-content;
-  height: 100%;
-  padding: 0 clamp(40px, 9vw, 128px);
-}
-
-/* --- Panels --- */
-
-.panel {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: clamp(28px, 3vw, 44px);
-  border: 1px solid var(--line-1);
-  background: linear-gradient(155deg, var(--chip-bg), transparent 70%);
-  overflow: hidden;
-}
-
-.hscroll--horizontal .panel {
-  flex: 0 0 min(460px, 78vw);
-  height: min(60vh, 540px);
-  transition: border-color 300ms var(--ease-out);
-}
-
-.hscroll--horizontal .panel:hover {
-  border-color: var(--line-1);
-}
-
-.panel::after {
-  content: "";
-  position: absolute;
-  inset: auto -30% -40% auto;
-  width: 60%;
-  height: 60%;
-  background: radial-gradient(circle, var(--glow), transparent 70%);
-  opacity: 0;
-  transition: opacity 400ms var(--ease-out);
-  pointer-events: none;
-}
-
-.hscroll--horizontal .panel:hover::after {
-  opacity: 0.6;
-}
-
-.panel-index {
-  font-family: var(--font-mono);
-  font-size: clamp(2.4rem, 4vw, 3.4rem);
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: var(--accent);
-  opacity: 0.9;
-}
-
-.panel-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.panel-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-stretch: 114%;
-  font-size: clamp(1.4rem, 2.4vw, 2rem);
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  color: var(--text-hi);
-}
-
-.panel-desc {
-  margin: 0;
-  max-width: 42ch;
-  font-size: 15.5px;
-  line-height: 1.6;
-  color: var(--text-body);
-  text-wrap: pretty;
-}
-
-.panel-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 4px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.panel-tags li {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  color: var(--accent-2);
-  padding: 5px 10px;
-  border: 1px solid var(--line-2);
-}
-
-.panel-explore {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: auto;
-  border: 0;
-  background: none;
-  padding: 6px 0 0;
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.panel-explore svg {
-  width: 16px;
-  height: 16px;
-  transition: transform 250ms var(--ease-out);
-}
-
-.panel-explore:hover svg,
-.panel-explore:focus-visible svg {
-  transform: translateX(5px);
-  color: var(--accent);
-}
-
-/* End CTA panel */
-.panel--cta {
-  align-items: flex-start;
-  justify-content: center;
-  gap: 22px;
-  background: linear-gradient(155deg, rgba(46, 197, 255, 0.14), transparent 72%);
-  border-color: var(--line-1);
-}
-
-.panel-cta-lead {
-  margin: 0;
-  max-width: 16ch;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-stretch: 114%;
-  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  color: var(--text-hi);
-}
-
-.panel-cta-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-  padding: 15px 28px;
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: box-shadow 250ms var(--ease-out);
-}
-
-.panel-cta-button svg {
-  width: 16px;
-  height: 16px;
-  transition: transform 250ms var(--ease-out);
-}
-
-.panel-cta-button:hover,
-.panel-cta-button:focus-visible {
-  box-shadow: 0 8px 42px var(--glow);
-}
-
-.panel-cta-button:hover svg {
-  transform: translateX(4px);
-}
-
-/* Horizontal-scroll progress rail (only in horizontal mode) */
-.hscroll-progress {
-  display: none;
-}
-
-.hscroll--horizontal .hscroll-progress {
-  display: block;
-  position: absolute;
-  left: clamp(40px, 9vw, 128px);
-  right: clamp(40px, 9vw, 128px);
-  bottom: clamp(36px, 5vh, 64px);
-  height: 2px;
-  background: var(--line-1);
-}
-
-.hscroll-progress-fill {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  transform: scaleX(0);
-  transform-origin: left center;
-}
-
-/* Skeleton fallback list */
-.service-fallback {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  border-top: 1px solid var(--line-1);
   padding-bottom: clamp(70px, 9vw, 120px);
 }
 
-.panel--skeleton {
-  gap: 12px;
+.service-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: clamp(64px, 8vw, 120px) minmax(0, 1fr);
+  gap: clamp(16px, 3vw, 40px);
+  align-items: center;
+  padding: clamp(26px, 3.4vw, 40px) clamp(8px, 1.5vw, 20px);
+  border-bottom: 1px solid var(--line-1);
+}
+
+.service-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(15, 128, 203, 0.1), rgba(15, 128, 203, 0.02));
+  transform: scaleY(0);
+  transform-origin: bottom center;
+  transition: transform 420ms var(--ease-out-quint);
+  pointer-events: none;
+}
+
+.service-row:hover::before {
+  transform: scaleY(1);
+  transform-origin: top center;
+}
+
+.service-index {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+  font-weight: 800;
+  font-stretch: 120%;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text-dim);
+  opacity: 0.4;
+  transition:
+    color 250ms var(--ease-out),
+    opacity 250ms var(--ease-out);
+}
+
+.service-row:hover .service-index {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.service-row-copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.service-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 680;
+  font-stretch: 112%;
+  font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--text-hi);
+  transition: transform 350ms var(--ease-out-quint);
+}
+
+.service-row:hover .service-title {
+  transform: translateX(6px);
+}
+
+.service-body {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--text-body);
 }
 
 
+
 /* ============================================================
-   WHY — the light inversion (paper flash)
+   WHY — raised contrast panel (theme-matched, not a light flip)
    ============================================================ */
 
 .why-section {
@@ -700,20 +516,37 @@
 }
 
 .value-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 1.6vw, 22px);
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--invert-line);
 }
 
 .value-item {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 18px;
-  padding: clamp(24px, 3vw, 34px) 0;
-  border-bottom: 1px solid var(--invert-line);
+  padding: clamp(24px, 2.6vw, 34px);
+  border: 1px solid var(--invert-line);
+  background: color-mix(in srgb, var(--invert-title) 3%, transparent);
+  transition:
+    transform 500ms var(--ease-out-quint),
+    border-color 400ms var(--ease-out),
+    background-color 400ms var(--ease-out);
+}
+
+.value-item:hover {
+  transform: translateY(-6px);
+  border-color: var(--invert-accent);
+  background: color-mix(in srgb, var(--invert-accent) 7%, transparent);
+}
+
+@media (max-width: 720px) {
+  .value-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .value-node {
@@ -1230,15 +1063,17 @@
 .footer-wordmark {
   font-family: var(--font-display);
   font-weight: 800;
-  font-stretch: 122%;
-  font-size: clamp(4rem, 15.5vw, 15rem);
-  line-height: 0.78;
+  font-stretch: 118%;
+  /* Sized to fit the full word within the viewport — no edge clipping. */
+  font-size: min(12.4vw, 11rem);
+  line-height: 0.82;
   letter-spacing: -0.03em;
   text-align: center;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--wordmark);
   user-select: none;
-  transform: translateY(10%);
+  transform: translateY(8%);
 }
 
 .footer-legal {
@@ -1341,8 +1176,10 @@
 }
 
 .skeleton-index {
-  width: 44px;
-  height: 40px;
+  /* Matches the size of the real ghost-numeral .service-index so the
+     skeleton-to-content swap doesn't visibly jump. */
+  width: clamp(46px, 6vw, 72px);
+  height: clamp(35px, 4vw, 54px);
   margin-bottom: 4px;
 }
 

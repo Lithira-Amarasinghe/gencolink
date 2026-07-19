@@ -37,14 +37,16 @@
   --btn-bg: #eef3fb;
   --btn-fg: #0b1330;
 
-  /* Contrast (Why) section — flips against the scheme */
-  --invert-bg: #f5f7fc;
-  --invert-title: #0b1330;
-  --invert-body: #46536b;
-  --invert-accent: #0f80cb;
-  --invert-line: rgba(22, 33, 98, 0.15);
-  --invert-skel-a: rgba(22, 33, 98, 0.08);
-  --invert-skel-b: rgba(22, 33, 98, 0.15);
+  /* "Why" section surface — a raised dark panel in dark mode (NOT a light
+     flip: it must stay legibly dark like the rest of the theme), a raised
+     light panel in light mode. Same names, theme-matched values each side. */
+  --invert-bg: #0b1330;
+  --invert-title: #ffffff;
+  --invert-body: #b9c5de;
+  --invert-accent: #2ec5ff;
+  --invert-line: rgba(238, 243, 251, 0.14);
+  --invert-skel-a: rgba(238, 243, 251, 0.06);
+  --invert-skel-b: rgba(238, 243, 251, 0.12);
 
   /* Atmosphere */
   --grain-o: 0.5;
@@ -93,13 +95,13 @@
     --btn-bg: #0b1330;
     --btn-fg: #ffffff;
 
-    --invert-bg: #101a52;
-    --invert-title: #ffffff;
-    --invert-body: #b9c5de;
-    --invert-accent: #4ea8e8;
-    --invert-line: rgba(238, 243, 251, 0.16);
-    --invert-skel-a: rgba(238, 243, 251, 0.1);
-    --invert-skel-b: rgba(238, 243, 251, 0.2);
+    --invert-bg: #e9eefa;
+    --invert-title: #0b1330;
+    --invert-body: #46536b;
+    --invert-accent: #0f80cb;
+    --invert-line: rgba(22, 33, 98, 0.14);
+    --invert-skel-a: rgba(22, 33, 98, 0.08);
+    --invert-skel-b: rgba(22, 33, 98, 0.15);
 
     --grain-o: 0.28;
     --wordmark: rgba(11, 19, 48, 0.06);
@@ -131,13 +133,13 @@
     --btn-bg: #0b1330;
     --btn-fg: #ffffff;
 
-    --invert-bg: #101a52;
-    --invert-title: #ffffff;
-    --invert-body: #b9c5de;
-    --invert-accent: #4ea8e8;
-    --invert-line: rgba(238, 243, 251, 0.16);
-    --invert-skel-a: rgba(238, 243, 251, 0.1);
-    --invert-skel-b: rgba(238, 243, 251, 0.2);
+    --invert-bg: #e9eefa;
+    --invert-title: #0b1330;
+    --invert-body: #46536b;
+    --invert-accent: #0f80cb;
+    --invert-line: rgba(22, 33, 98, 0.14);
+    --invert-skel-a: rgba(22, 33, 98, 0.08);
+    --invert-skel-b: rgba(22, 33, 98, 0.15);
 
     --grain-o: 0.28;
     --wordmark: rgba(11, 19, 48, 0.06);
@@ -153,7 +155,16 @@
 
 html {
   background: var(--bg);
-  scroll-behavior: smooth;
+  /* Smooth scroll for anchor nav is driven explicitly via scrollIntoView()
+     in app.ts, not this CSS property — native scroll-behavior: smooth fights
+     GSAP ScrollTrigger.normalizeScroll's own RAF-driven scroll feed and is
+     what caused the slight up/down flashing during scrub animations. */
+  /* Belt-and-suspenders alongside body's overflow-x:hidden — confirmed via
+     testing that `html`, not `body`, is the actual scrolling box here, so
+     a decorative element bleeding past the viewport edge (e.g. the hero's
+     -40px dot-field bleed) could still push real horizontal scroll unless
+     html itself also clips it. */
+  overflow-x: hidden;
 }
 
 body {

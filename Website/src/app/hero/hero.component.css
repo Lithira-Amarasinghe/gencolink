@@ -1,0 +1,313 @@
+:host {
+  display: block;
+}
+
+.hero {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  background: var(--bg);
+  isolation: isolate;
+  /* .hero-dots deliberately bleeds -40px past its own edges for full-bleed
+     texture coverage; without clipping it here that bleed pushes real
+     horizontal scroll onto the page (confirmed: scrollTo(500,0) actually
+     moved scrollX, even with body{overflow-x:hidden} — html was the true
+     scrolling box). Canvas is position:fixed, unaffected by this clip. */
+  overflow-x: hidden;
+}
+
+/* ============ HALFTONE DOT FIELD (paper texture) ============ */
+/* Two offset dot layers drift at different speeds/directions — a slow,
+   always-on ambient float so the field reads as alive in both themes
+   (var(--text-dim) carries enough contrast at low opacity to stay visible
+   on both the dark and light schemes, unlike the near-invisible --line-1). */
+
+.hero-dots {
+  position: absolute;
+  inset: -40px;
+  z-index: -2;
+  background-image: radial-gradient(var(--text-dim) 1.4px, transparent 1.6px);
+  background-size: 26px 26px;
+  opacity: 0.34;
+  animation: hero-dots-drift 34s linear infinite;
+  /* A vertical-only fade (full width, dissolving only near the very top and
+     the section hand-off at the bottom) rather than an elliptical mask —
+     an ellipse's radii scale with the box's aspect ratio, so on a narrow,
+     tall phone viewport it was fading the dots out well before the screen
+     edges. This keeps the field visible edge-to-edge at every width. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 78%, transparent 100%);
+  pointer-events: none;
+}
+
+.hero-dots::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--accent) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+  background-position: 13px 13px;
+  opacity: 0.5;
+  animation: hero-dots-drift-reverse 46s linear infinite;
+}
+
+@keyframes hero-dots-drift {
+  from { background-position: 0 0; }
+  to { background-position: -260px 130px; }
+}
+
+@keyframes hero-dots-drift-reverse {
+  from { background-position: 13px 13px; }
+  to { background-position: 273px -117px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-dots,
+  .hero-dots::after {
+    animation: none;
+  }
+}
+
+/* Ambient canvas kept far back and subtle */
+.hero-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+}
+
+/* ============ STAGE ============ */
+
+.hero-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 3.5vh, 44px);
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: clamp(96px, 14vh, 160px) clamp(16px, 4vw, 64px) clamp(28px, 4vh, 48px);
+}
+
+/* ============ CAPABILITY STRIP (awards-line slot) ============ */
+
+.hero-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  row-gap: 6px;
+  gap: 14px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.05vw, 14px);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-body);
+  animation: hero-rise 0.7s var(--ease-out) 0.2s both;
+}
+
+.hero-strip i {
+  font-style: normal;
+  color: var(--accent);
+}
+
+/* ============ GIANT STATEMENT TYPE ============ */
+
+.hero-type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 2.4vh, 30px);
+  width: 100%;
+}
+
+.hero-block {
+  position: relative;
+  margin: 0;
+  text-align: center;
+}
+
+/* Base + glitch layers share metrics exactly so glyphs register */
+.hero-block--brand .hero-layer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: 116%;
+  font-size: min(11.4vw, 168px);
+  line-height: 0.85;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hero-block--vision .hero-layer {
+  display: block;
+  max-width: 18ch;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 110%;
+  font-size: clamp(1.9rem, 5.2vw, 4.4rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.hero-layer--base {
+  color: var(--text-hi);
+  pointer-events: none;
+}
+
+.hero-block--brand .hero-layer--base {
+  color: var(--accent);
+}
+
+/* Cursor-reveal glow — visible only through a spotlight that follows the
+   pointer. Both offset shadows use the theme's own accent pair, so the
+   glow always reads as "this site's colour", light or dark, never a
+   fixed hue that clashes with the active scheme. */
+.hero-layer--glitch {
+  position: absolute;
+  inset: 0;
+  color: var(--text-hi);
+  text-shadow:
+    -0.03em 0.016em 8px var(--accent),
+    0.03em -0.016em 8px var(--accent-2),
+    0 0 30px var(--glow);
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    circle 170px at var(--bx, -999px) var(--by, -999px),
+    #000 0%,
+    #000 30%,
+    transparent 70%
+  );
+  mask-image: radial-gradient(
+    circle 170px at var(--bx, -999px) var(--by, -999px),
+    #000 0%,
+    #000 30%,
+    transparent 70%
+  );
+}
+
+/* Brand letters assemble on load, then glow-breathe forever */
+.hero-wordmark-char {
+  display: inline-block;
+  transform-origin: center bottom;
+  animation-name: hero-char-in, hero-char-glow;
+  animation-duration: 0.9s, 3.6s;
+  animation-timing-function: var(--ease-out-quint), ease-in-out;
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: both, none;
+  animation-delay: calc(0.1s + var(--c, 0) * 0.05s), calc(1.4s + var(--c, 0) * 0.12s);
+}
+
+@keyframes hero-char-in {
+  from {
+    opacity: 0;
+    transform: translateY(115%) rotateX(-70deg);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+@keyframes hero-char-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 40px var(--glow);
+  }
+  50% {
+    text-shadow:
+      0 0 24px var(--glow),
+      0 0 90px var(--glow);
+  }
+}
+
+.hero-block--vision .hero-layer--base {
+  opacity: 0;
+  transform: translateY(24px);
+  animation: hero-rise 0.8s var(--ease-out) 0.9s both;
+}
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Touch devices have no hover, and even desktop users won't discover a
+   hover-only reveal without a hint — both are solved in hero.component.ts
+   by a JS "phantom cursor" that drives the SAME --bx/--by mask coordinates
+   a real pointer would, wandering the hero on an organic random walk (not
+   a fixed mechanical sweep) until a real mouse takes over. No separate CSS
+   sweep needed here as a result. See updateAutoPilot() in the component. */
+
+/* ============ RESPONSIVE ============ */
+
+@media (max-width: 640px) {
+  .hero-stage {
+    padding: clamp(88px, 13vh, 120px) clamp(16px, 5vw, 32px) clamp(24px, 4vh, 40px);
+    gap: clamp(18px, 3vh, 28px);
+  }
+  .hero-strip {
+    font-size: 10px;
+    gap: 8px;
+    letter-spacing: 0.1em;
+  }
+  .hero-block--brand .hero-layer {
+    font-size: 12.6vw;
+    letter-spacing: -0.02em;
+  }
+  .hero-block--vision .hero-layer {
+    font-size: clamp(1.4rem, 6.8vw, 2rem);
+  }
+}
+
+@media (max-height: 640px) {
+  .hero-stage {
+    gap: 14px;
+  }
+  .hero-block--brand .hero-layer {
+    font-size: min(10vw, 84px);
+  }
+  .hero-block--vision .hero-layer {
+    font-size: clamp(1.2rem, 4.6vh, 1.8rem);
+  }
+}
+
+/* ============ REDUCED MOTION ============ */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-wordmark-char,
+  .hero-layer--glitch,
+  .hero-strip,
+  .hero-block--vision .hero-layer--base {
+    animation: none;
+  }
+  .hero-strip,
+  .hero-block--vision .hero-layer--base {
+    opacity: 1;
+    transform: none;
+  }
+  .hero-layer--glitch {
+    -webkit-mask-image: none;
+    mask-image: none;
+    opacity: 0.12;
+  }
+}

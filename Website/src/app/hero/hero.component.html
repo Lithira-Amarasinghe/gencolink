@@ -1,0 +1,37 @@
+<section class="hero" #scene aria-labelledby="hero-title">
+  <!-- Halftone dot field (incredibles-style paper texture) -->
+  <div class="hero-dots" aria-hidden="true"></div>
+
+  <!-- Ambient canvas: soft aurora wash + click ripples (kept subtle) -->
+  <canvas class="hero-canvas" #canvas aria-hidden="true"></canvas>
+
+  <div class="hero-stage" #stage>
+    <!-- Capability strip — the "awards line" slot from the reference -->
+    <p class="hero-strip" aria-hidden="true">
+      <span>Web Apps</span><i>·</i><span>Cloud Solutions</span
+      ><i>·</i><span>Digital Automations</span>
+    </p>
+
+    <!-- Giant statement block: GENCOLINK first, vision second. Both carry a
+         chromatic reveal layer that lights up under the cursor. -->
+    <div class="hero-type" #wordmark>
+      <div class="hero-block hero-block--brand" aria-label="Gencolink">
+        <div class="hero-layer hero-layer--base" aria-hidden="true">
+          @for (ch of brandLetters; track $index) {
+            <span class="hero-wordmark-char" [style.--c]="$index">{{ ch }}</span>
+          }
+        </div>
+        <div class="hero-layer hero-layer--glitch" aria-hidden="true">GENCOLINK</div>
+      </div>
+
+      <h1 id="hero-title" class="hero-block hero-block--vision">
+        <span class="hero-layer hero-layer--base"
+          >A better and more joyous future through the power of computing</span
+        >
+        <span class="hero-layer hero-layer--glitch" aria-hidden="true"
+          >A better and more joyous future through the power of computing</span
+        >
+      </h1>
+    </div>
+  </div>
+</section>
