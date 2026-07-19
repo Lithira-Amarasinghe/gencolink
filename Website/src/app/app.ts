@@ -171,13 +171,14 @@ export class App implements AfterViewInit, OnDestroy {
 
       this.motionContext = gsap.context(() => {
 
-        // Aurora orbs drift on scroll (scrubbed parallax).
+        // Aurora orbs drift on scroll (scrubbed parallax) with GPU acceleration.
         gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((el) => {
           const strength = Number(el.dataset['parallax'] ?? 10);
           gsap.to(el, {
             yPercent: strength,
             ease: 'none',
-            scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 0.6 },
+            force3D: true,
+            scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 0.3 },
           });
         });
 
@@ -193,6 +194,7 @@ export class App implements AfterViewInit, OnDestroy {
             y: 44,
             duration: 1,
             ease: 'expo.out',
+            force3D: true,
             // 'top 81%' sits between the too-early 88% (fires the instant an
             // edge clips the bottom of the screen) and the too-late 75% —
             // the element is already a bit into the viewport before motion
@@ -236,7 +238,8 @@ export class App implements AfterViewInit, OnDestroy {
                 duration: 0.9,
                 ease: 'expo.out',
                 stagger: 0.12,
-                overwrite: true,
+                overwrite: 'auto',
+                force3D: true,
               }),
           });
         });
@@ -249,22 +252,25 @@ export class App implements AfterViewInit, OnDestroy {
             transformOrigin: 'left center',
             duration: 1.1,
             ease: 'power4.out',
+            force3D: true,
             scrollTrigger: { trigger: el, start: 'top 81%', once: true },
           });
         });
 
-        // Footer wordmark slides up as it enters.
+        // Footer wordmark slides up as it enters with GPU acceleration.
         gsap.from('.footer-wordmark', {
           yPercent: 40,
           ease: 'none',
-          scrollTrigger: { trigger: '.site-footer', start: 'top bottom', end: 'bottom bottom', scrub: 0.5 },
+          force3D: true,
+          scrollTrigger: { trigger: '.site-footer', start: 'top bottom', end: 'bottom bottom', scrub: 0.2 },
         });
 
-        // Header progress hairline tracks overall page position.
+        // Header progress hairline tracks overall page position with GPU acceleration.
         gsap.to('.scroll-progress', {
           scaleX: 1,
           ease: 'none',
-          scrollTrigger: { start: 0, end: 'max', scrub: 0.3 },
+          force3D: true,
+          scrollTrigger: { start: 0, end: 'max', scrub: 0.2 },
         });
       });
 

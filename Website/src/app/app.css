@@ -1466,9 +1466,37 @@
   }
 }
 
+/* ---------- GPU Acceleration for scroll smoothness ---------- */
+
+[data-parallax],
+[data-reveal],
+[data-reveal-row],
+[data-rule],
+.footer-wordmark,
+.scroll-progress {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000px;
+  -webkit-perspective: 1000px;
+}
+
+[data-parallax] {
+  transform: translateZ(0);
+}
+
 /* ---------- Reduced motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {
+  [data-parallax],
+  [data-reveal],
+  [data-reveal-row],
+  [data-rule],
+  .footer-wordmark,
+  .scroll-progress {
+    will-change: auto;
+  }
+
   .theme-toggle,
   .theme-toggle-thumb,
   .panel::after,
