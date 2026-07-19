@@ -37,14 +37,15 @@
   --btn-bg: #eef3fb;
   --btn-fg: #0b1330;
 
-  /* Custom cursor — a small precision ring + dot in the theme's own accent,
-     instead of the generic OS arrow. Encoded as full `cursor` values (image +
-     hotspot + fallback keyword) so both interactive and non-interactive
-     elements can just do `cursor: var(--cursor-default|pointer)`. */
-  --cursor-default: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='7' fill='none' stroke='%232ec5ff' stroke-width='1.4' opacity='0.85'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%232ec5ff'/%3E%3C/svg%3E")
-    12 12, auto;
-  --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='11' fill='none' stroke='%232ec5ff' stroke-width='1.6' opacity='0.9'/%3E%3Ccircle cx='15' cy='15' r='3' fill='%232ec5ff'/%3E%3C/svg%3E")
-    15 15, pointer;
+  /* Cursor: the normal OS arrow at rest — no custom image, nothing to learn
+     or get in the way. Interactive elements swap to a theme-accent-colored
+     hand (the same "Pointer" glyph as the Lucide icon set already used
+     across the site, so the cursor and the UI icons read as one system)
+     instead of the browser's flat default hand, so "this is clickable" is
+     unmistakable and always matches the active theme. */
+  --cursor-default: auto;
+  --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232ec5ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 14a8 8 0 0 1-8 8'/%3E%3Cpath d='M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2'/%3E%3Cpath d='M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1'/%3E%3Cpath d='M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10'/%3E%3Cpath d='M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15'/%3E%3C/svg%3E")
+    8 3, pointer;
 
   /* "Why" section surface — a raised dark panel in dark mode (NOT a light
      flip: it must stay legibly dark like the rest of the theme), a raised
@@ -104,10 +105,9 @@
     --btn-bg: #0b1330;
     --btn-fg: #ffffff;
 
-    --cursor-default: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='7' fill='none' stroke='%230f80cb' stroke-width='1.4' opacity='0.85'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%230f80cb'/%3E%3C/svg%3E")
-      12 12, auto;
-    --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='11' fill='none' stroke='%230f80cb' stroke-width='1.6' opacity='0.9'/%3E%3Ccircle cx='15' cy='15' r='3' fill='%230f80cb'/%3E%3C/svg%3E")
-      15 15, pointer;
+    --cursor-default: auto;
+    --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230f80cb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 14a8 8 0 0 1-8 8'/%3E%3Cpath d='M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2'/%3E%3Cpath d='M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1'/%3E%3Cpath d='M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10'/%3E%3Cpath d='M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15'/%3E%3C/svg%3E")
+      8 3, pointer;
 
     --invert-bg: #e9eefa;
     --invert-title: #0b1330;
@@ -147,10 +147,9 @@
     --btn-bg: #0b1330;
     --btn-fg: #ffffff;
 
-    --cursor-default: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='12' cy='12' r='7' fill='none' stroke='%230f80cb' stroke-width='1.4' opacity='0.85'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%230f80cb'/%3E%3C/svg%3E")
-      12 12, auto;
-    --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='11' fill='none' stroke='%230f80cb' stroke-width='1.6' opacity='0.9'/%3E%3Ccircle cx='15' cy='15' r='3' fill='%230f80cb'/%3E%3C/svg%3E")
-      15 15, pointer;
+    --cursor-default: auto;
+    --cursor-pointer: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230f80cb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 14a8 8 0 0 1-8 8'/%3E%3Cpath d='M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2'/%3E%3Cpath d='M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1'/%3E%3Cpath d='M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10'/%3E%3Cpath d='M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15'/%3E%3C/svg%3E")
+      8 3, pointer;
 
     --invert-bg: #e9eefa;
     --invert-title: #0b1330;
@@ -178,19 +177,26 @@ html {
      in app.ts, not this CSS property — native scroll-behavior: smooth fights
      GSAP ScrollTrigger.normalizeScroll's own RAF-driven scroll feed and is
      what caused the slight up/down flashing during scrub animations. */
-  /* Belt-and-suspenders alongside body's overflow-x:hidden — confirmed via
+  /* Belt-and-suspenders alongside body's overflow-x:clip — confirmed via
      testing that `html`, not `body`, is the actual scrolling box here, so
      a decorative element bleeding past the viewport edge (e.g. the hero's
      -40px dot-field bleed) could still push real horizontal scroll unless
-     html itself also clips it. */
-  overflow-x: hidden;
+     html itself also clips it.
+     `clip`, not `hidden`: per spec, setting only overflow-x to anything
+     other than `visible` force-computes the UNSET overflow-y to `auto` —
+     silently turning html/body into their own scroll containers. That
+     broke every position:sticky element on the page (their "nearest
+     scrolling ancestor" became body/html instead of the real viewport).
+     `clip` is exempt from that promotion rule, so it clips horizontally
+     without the side effect. */
+  overflow-x: clip;
 }
 
 body {
   min-width: 320px;
   margin: 0;
   background: var(--bg);
-  overflow-x: hidden;
+  overflow-x: clip;
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

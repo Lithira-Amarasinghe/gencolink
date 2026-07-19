@@ -123,18 +123,25 @@
   <!-- ============ WHY — the light inversion ============ -->
   <section id="why" class="why-section" aria-labelledby="why-title">
     <div class="section-shell why-layout">
+      <!-- Outer .why-intro is stretched (via .why-layout's align-items) to
+           match the taller .value-list column, giving the INNER
+           .why-intro-sticky room to actually pin as you scroll — a sticky
+           element needs a taller non-sticky ancestor to stick within, it
+           can't do both jobs itself. -->
       <div class="why-intro">
-        @if (contentStore.loading()) {
-          <div aria-hidden="true">
-            <span class="skeleton-block skeleton-block--light skeleton-eyebrow"></span>
-            <span class="skeleton-block skeleton-block--light skeleton-heading"></span>
-            <span class="skeleton-block skeleton-block--light skeleton-desc-line"></span>
-          </div>
-        } @else {
-          <p class="why-tag" data-reveal>{{ contentStore.whySection().eyebrow }}</p>
-          <h2 id="why-title" data-reveal>{{ contentStore.whySection().heading }}</h2>
-          <p class="why-lead" data-reveal>{{ contentStore.whySection().description }}</p>
-        }
+        <div class="why-intro-sticky">
+          @if (contentStore.loading()) {
+            <div aria-hidden="true">
+              <span class="skeleton-block skeleton-block--light skeleton-eyebrow"></span>
+              <span class="skeleton-block skeleton-block--light skeleton-heading"></span>
+              <span class="skeleton-block skeleton-block--light skeleton-desc-line"></span>
+            </div>
+          } @else {
+            <p class="why-tag" data-reveal>{{ contentStore.whySection().eyebrow }}</p>
+            <h2 id="why-title" data-reveal>{{ contentStore.whySection().heading }}</h2>
+            <p class="why-lead" data-reveal>{{ contentStore.whySection().description }}</p>
+          }
+        </div>
       </div>
 
       <ul class="value-list" [attr.aria-busy]="contentStore.loading()">

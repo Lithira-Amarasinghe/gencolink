@@ -121,7 +121,9 @@
   font-family: var(--font-mono);
   font-size: 13px;
   letter-spacing: 0.04em;
-  color: var(--text-dim);
+  /* --text (not --text-dim) — near-black navy in light mode, near-white in
+     dark mode: strong, legible nav items rather than washed-out gray. */
+  color: var(--text);
   cursor: pointer;
   transition: color 200ms var(--ease-out);
 }
@@ -502,10 +504,27 @@
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   gap: clamp(44px, 6vw, 96px);
-  align-items: start;
+  /* align-items: start (the old value) sizes the .why-intro grid cell to
+     only its own content height — leaving position:sticky nothing to stick
+     WITHIN once you scroll past that short box, so the "sticky" column just
+     scrolled away like normal content. Stretching the cell to match the
+     taller .value-list column gives it real room to pin against. */
+  align-items: stretch;
 }
 
 .why-intro {
+  /* Deliberately NOT align-self:start — this cell must stay stretched to
+     the row's full height (inherits align-items:stretch from .why-layout)
+     so .why-intro-sticky, below, has real room to pin within. This element
+     itself is NOT position:sticky — a sticky element can't also be the
+     tall box it needs to stick inside, they have to be two different
+     elements (see .why-intro-sticky). */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.why-intro-sticky {
   position: sticky;
   top: clamp(90px, 14vh, 140px);
 }
@@ -1335,7 +1354,7 @@
     grid-template-columns: 1fr;
   }
 
-  .why-intro {
+  .why-intro-sticky {
     position: static;
   }
 

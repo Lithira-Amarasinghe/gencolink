@@ -31,13 +31,6 @@ interface Node {
   hub: boolean; // brighter, larger anchor nodes
 }
 
-interface Ripple {
-  x: number;
-  y: number;
-  r: number;
-  life: number; // 1 → 0
-}
-
 interface Wash {
   x: number;
   y: number;
@@ -55,7 +48,6 @@ interface Wash {
  *  • Nodes drift on soft ambient springs (alive even when idle).
  *  • The cursor repels nearby nodes and lights up the links around it — the
  *    field visibly parts and glows wherever the pointer goes.
- *  • Clicking emits a shock-ring that pushes the network outward.
  *  • An aurora wash + cursor spotlight sit under the mesh for depth and colour.
  *
  * On top: the GENCOLINK brand-band (CSS letter assembly) and the single vision
@@ -80,7 +72,6 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
 
   private ctx?: CanvasRenderingContext2D;
   private nodes: Node[] = [];
-  private ripples: Ripple[] = [];
   private washes: Wash[] = [];
   private rafId?: number;
   private resizeObserver?: ResizeObserver;
@@ -107,7 +98,6 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
 
   private onPointerMove?: (e: PointerEvent) => void;
   private onPointerLeave?: () => void;
-  private onPointerDown?: (e: PointerEvent) => void;
 
   // ---------- "Phantom cursor" auto-pilot ----------
   // Nobody discovers a hover-only reveal without a hint, and touch devices
@@ -196,14 +186,8 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
           // idle timer, let the phantom cursor pick back up next frame.
           this.lastRealMoveAt = -Infinity;
         };
-        this.onPointerDown = (e: PointerEvent) => {
-          this.lastRealMoveAt = performance.now();
-          this.ripples.push({ x: e.clientX, y: e.clientY, r: 0, life: 1 });
-          if (this.ripples.length > 6) this.ripples.shift();
-        };
         scene.addEventListener('pointermove', this.onPointerMove, { passive: true });
         scene.addEventListener('pointerleave', this.onPointerLeave, { passive: true });
-        scene.addEventListener('pointerdown', this.onPointerDown, { passive: true });
       }
 
       if (this.reducedMotion) {
@@ -327,32 +311,11 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
         }
       }
 
-      // ripple shock
-      for (const rp of this.ripples) {
-        const nx = n.hx + n.ox;
-        const ny = n.hy + n.oy;
-        const dx = nx - rp.x;
-        const dy = ny - rp.y;
-        const d = Math.hypot(dx, dy) || 0.01;
-        const band = Math.abs(d - rp.r);
-        if (band < 46) {
-          const f = (1 - band / 46) * rp.life * 5;
-          n.vx += (dx / d) * f;
-          n.vy += (dy / d) * f;
-        }
-      }
-
       n.vx *= 0.86;
       n.vy *= 0.86;
       n.ox += n.vx;
       n.oy += n.vy;
     }
-
-    for (const rp of this.ripples) {
-      rp.r += 9;
-      rp.life -= 0.016;
-    }
-    this.ripples = this.ripples.filter((r) => r.life > 0);
   }
 
   /**
@@ -550,14 +513,6 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // 5) Ripple rings
-    for (const rp of this.ripples) {
-      ctx.strokeStyle = `rgba(${rgbA},${(rp.life * 0.4).toFixed(3)})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
-      ctx.stroke();
-    }
   }
 
   // ---------- Scroll choreography (light exit fade, no blank hand-off) ----------
@@ -611,7 +566,6 @@ export class HeroComponent implements AfterViewInit, OnDestroy {
     if (scene) {
       if (this.onPointerMove) scene.removeEventListener('pointermove', this.onPointerMove);
       if (this.onPointerLeave) scene.removeEventListener('pointerleave', this.onPointerLeave);
-      if (this.onPointerDown) scene.removeEventListener('pointerdown', this.onPointerDown);
     }
     this.resizeObserver?.disconnect();
     this.visibilityObserver?.disconnect();
